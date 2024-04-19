@@ -36,6 +36,7 @@ class AdminPanelProvider extends PanelProvider
                         hasAvatars: false, // Enables the avatar upload form component (default = false)
                         slug: 'my-profile' // Sets the slug for the profile page (default = 'my-profile')
                     )
+                    ->enableSanctumTokens()
             )
             ->login()
             ->colors([

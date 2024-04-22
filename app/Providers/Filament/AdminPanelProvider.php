@@ -7,6 +7,7 @@ use Filament\Panel;
 use Filament\Widgets;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
+use App\Livewire\MyCustomComponent;
 use Filament\Http\Middleware\Authenticate;
 use Jeffgreco13\FilamentBreezy\BreezyCore;
 use Illuminate\Session\Middleware\StartSession;
@@ -29,13 +30,8 @@ class AdminPanelProvider extends PanelProvider
             ->path('admin')
             ->plugin(
                 BreezyCore::make()
-                    ->myProfile(
-                        shouldRegisterUserMenu: true, // Sets the 'account' link in the panel User Menu (default = true)
-                        shouldRegisterNavigation: true, // Adds a main navigation item for the My Profile page (default = false)
-                        navigationGroup: 'Reglages', // Sets the navigation group for the My Profile page (default = null)
-                        hasAvatars: false, // Enables the avatar upload form component (default = false)
-                        slug: 'my-profile' // Sets the slug for the profile page (default = 'my-profile')
-                    )
+                    ->myProfile()
+                    ->myProfileComponents([MyCustomComponent::class])
                     ->enableSanctumTokens()
             )
             ->login()

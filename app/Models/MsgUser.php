@@ -31,9 +31,9 @@ class MsgUser extends Model
         $users = MsgConnect::get('users');
         $users = $users['value'] ?? [];
         $existingEmails = MsgUser::pluck('email')->toArray();
-        \Log::info("filteredUsers");
+        // \Log::info("filteredUsers");
         $filteredUsers = array_filter($users, function ($user) use ($existingEmails) {
-            \Log::info($user);
+            // \Log::info($user);
             return !in_array($user['mail'], $existingEmails);
         });
         return \Arr::pluck($filteredUsers, 'mail', 'id');

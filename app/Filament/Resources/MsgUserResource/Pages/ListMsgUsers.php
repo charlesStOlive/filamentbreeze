@@ -28,9 +28,9 @@ class ListMsgUsers extends ListRecords
                 ->action(function (array $data): void {
                     $msgId = $data['msg_id'];
                     $user = MsgUser::getApiMsgUser($msgId);
-                    \Log::info($user);
+                    // \Log::info($user);
                     $secret = Str::uuid();
-                    \Log::info('secret '.$secret);
+                    // \Log::info('secret '.$secret);
                     MsgUser::create([
                         'ms_id' => $user['id'],
                         'email' => $user['mail'],

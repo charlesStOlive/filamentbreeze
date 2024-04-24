@@ -4,26 +4,36 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
+use App\Facades\MsgConnect;
 
 class MsgEmailNotification extends Controller
 {
     public function handle(Request $request)
     {
-        $notifications = $request->input('value');
-        \Log::info('notifications');
-        \Log::info($notifications);
-        
-        $clientStateReceived = $request->header('Client-State');
-        if ($clientStateReceived !== 'expectedClientState') {
-            return response()->json(['error' => 'Invalid client state'], 403);
+        \Log::info('Request data:');
+        \Log::info($request->all());
+        \Log::info('Request has validation data:');
+        \Log::info($request->has('validationToken'));
+
+        // Check if the request contains a validation token
+        if ($request->has('validationToken')) {
+            \Log::info('Validation token received:');
+            \Log::info($request->input('validationToken'));
+            // Respond with the validation token as plain text
+            return response($request->input('validationToken'))->header('Content-Type', 'text/plain');
         }
 
-        // Logique pour traiter la notification
-        $notification = $request->all();
-        Log::info('Email notification received: ', $notification);
-
-        // Envoyer une réponse pour confirmer la réception de la notification
-        return response()->json(['status' => 'success'], 200);
+        $notificationData = $request->all();
+    
+        // Traitement de la notification
+        try {
+            $result = MsgConnect::processEmailNotification($notificationData);
+            \Log::info('OK with result------------------------');
+            return response()->json(['status' => 'success', 'message' => 'Email processed successfully'], 200);
+        } catch (\Exception $e) {
+            \Log::error($e->getMessage());
+            return response()->json(['status' => 'error', 'message' => 'Failed to process email: ' . $e->getMessage()], 500);
+        }
     }
 
     // private function updateEmailSubject($accessToken, $userId, $messageId, $prefix)

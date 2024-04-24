@@ -10,6 +10,7 @@ namespace App\Classes\MsgConnect;
 use App\Models\MsgToken;
 use Exception;
 use GuzzleHttp\Client;
+use App\Models\MsgUser;
 use GuzzleHttp\Exception\ClientException;
 use GuzzleHttp\Exception\GuzzleException;
 
@@ -55,7 +56,7 @@ class MsgConnect
         return $token->access_token ?? null;
     }
 
-    public function subscribeToEmailNotifications(string $userId, string $notificationUrl): array
+    public function subscribeToEmailNotifications(string $userId, string $secretClientValue): array
     {
         try {
             $subscription = [
@@ -63,14 +64,127 @@ class MsgConnect
                 'notificationUrl' => 'https://filamentbreeze.notilac.fr/api/email-notifications', // Votre endpoint qui traitera les notifications
                 'resource' => 'users/' . $userId . '/mailFolders(\'Inbox\')/messages', // Chemin de la ressource à surveiller
                 'expirationDateTime' => now()->addHours(24)->toISOString(), // Date d'expiration de l'abonnement
-                'clientState' => 'secretClientValue', // Optionnel, valeur secrète pour valider que la notification vient de Microsoft Graph
+                'clientState' => $secretClientValue,
             ];
 
-            return $this->guzzle('post', 'subscriptions', $subscription);
+            $response = $this->guzzle('post', 'subscriptions', $subscription);
+            return ['success' => true, 'response' => $response];
         } catch (Exception $e) {
-            throw new Exception('Failed to subscribe to email notifications: ' . $e->getMessage());
+            \Log::error('Failed to subscribe to email notifications: ' . $e->getMessage());
+            return ['success' => false, 'error' => 'Failed to subscribe to email notifications'];
         }
     }
+
+    public function processEmailNotification($notificationData)
+    {
+        $data = $notificationData['value'][0];
+        $clientState = $data['clientState'];
+        $tenantId = $data['tenantId'];
+        $messageId = $data['resourceData']['id'];
+
+        \Log::info('tenantId: ' . $tenantId);
+        \Log::info('clientState: ' . $clientState);
+
+        try {
+            $user = $this->verifySubscriptionAndgetUser($clientState, $tenantId);
+        } catch (\Exception $e) {
+            \Log::error("Error in subscription verification: " . $e->getMessage());
+            throw $e; // Propagate the exception
+        }
+
+        \Log::info('User after verification:');
+        \Log::info($user);
+
+        $accessToken = $this->getAccessToken();
+        return $this->modifyEmailHeaderAndCategory($user, $messageId, $accessToken);
+    }
+
+    protected function verifySubscriptionAndgetUser($clientState, $tenantId)
+    {
+        if ($tenantId != config('msgraph.tenantId')) {
+            \Log::info('Différence entre msgraph.tenantId et tenantId: '.config('msgraph.tenantId'));
+            throw new \Exception("Tenant ID does not match the configured value.");
+        }
+
+        // Suppose that MsgUser is your Eloquent model and it has `mds_id` and `abn_secret` fields
+        $user = MsgUser::where('abn_secret', $clientState)->first();
+        \Log::info('User from verifySubscriptionAndgetUser:');
+        \Log::info($user);
+
+        if (!$user) {
+            throw new \Exception("No user found matching the provided client state.");
+        }
+
+        return $user;
+    }
+
+    public function modifyEmailHeaderAndCategory($user, $messageId)
+    {
+        $accessToken = $this->getAccessToken(); // Ensure you have a valid access token
+        $getEmailUrl = self::$baseUrl . "users/{$user->ms_id}/messages/{$messageId}";
+        $updateEmailUrl = $getEmailUrl;
+
+        $client = new Client();
+        try {
+            // Get the current email to modify
+            $response = $client->get($getEmailUrl, [
+                'headers' => [
+                    'Authorization' => 'Bearer ' . $accessToken,
+                    'Content-Type' => 'application/json'
+                ]
+            ]);
+
+            $email = json_decode($response->getBody()->getContents(), true);
+            
+            \Log::info('email all');
+            \Log::info($email);
+            [$senderEmail, $fromEmail, $toRecipients] = $this->extractEmailDetails($email);
+            \Log::info('senderEmail');
+            \Log::info($senderEmail);
+            if($senderEmail != 'charles.stolive@gmail.com') {
+                \Log::info('on abandonne ce mail !!!');
+                return;
+            }
+
+            $updatedSubject = "[test] " . $email['subject'];
+
+            // Update the email
+            $response = $client->patch($updateEmailUrl, [
+                'headers' => [
+                    'Authorization' => 'Bearer ' . $accessToken,
+                    'Content-Type' => 'application/json'
+                ],
+                'body' => json_encode([
+                    'subject' => $updatedSubject,
+                    'categories' => ['good'] // Add the category
+                ])
+            ]);
+
+            return json_decode($response->getBody()->getContents(), true);
+        } catch (Exception $e) {
+            \Log::error("Failed to modify email header: " . $e->getMessage());
+            return null;
+        }
+    }
+
+    private function extractEmailDetails($emailData)
+    {
+        // Extraire l'adresse email de l'expéditeur
+        $senderEmail = \Arr::get($emailData, 'sender.emailAddress.address');
+        \Log::info('Sender Email: ' . $senderEmail);
+
+        // Extraire l'adresse email du champ 'from'
+        $fromEmail = \Arr::get($emailData, 'from.emailAddress.address');
+        \Log::info('From Email: ' . $fromEmail);
+
+        // Pour les destinataires, 'toRecipients' est une liste
+        // Pour les destinataires, 'toRecipients' est une liste
+        $toRecipients = \Arr::pluck($emailData['toRecipients'], 'emailAddress.address');
+        \Log::info('To Recipients: ' . implode(', ', $toRecipients));
+
+        return [$senderEmail,$fromEmail,$toRecipients];
+    }
+
 
 
     public function getAccessToken(bool $returnNullNoAccessToken = false, bool $redirect = false): mixed
@@ -140,36 +254,27 @@ class MsgConnect
     /**
      * @throws Exception
      */
-    protected function guzzle(string $type, string $request, array $data = []): mixed
+    protected function guzzle(string $type, string $request, array $data = []): array
     {
-
         try {
-            $client = new Client;
-
+            $client = new Client();
             $response = $client->$type(self::$baseUrl . $request, [
                 'headers' => [
                     'Authorization' => 'Bearer ' . $this->getAccessToken(),
-                    'content-type' => 'application/json',
+                    'Content-Type' => 'application/json',
                     'Prefer' => config('msgraph.preferTimezone'),
                 ],
                 'body' => json_encode($data),
             ]);
 
-            $responseObject = $response->getBody()->getContents();
-
-            $isJson = $this->isJson($responseObject);
-
-            if ($isJson) {
-                return json_decode($responseObject, true);
-            }
-
-            return $responseObject;
+            $responseObject = json_decode($response->getBody()->getContents(), true);
+            return $responseObject ?? [];
         } catch (ClientException $e) {
-            \Log::info("ClientException");
-            \Log::info($e->getResponse()->getBody()->getContents());
-            return json_decode(($e->getResponse()->getBody()->getContents()));
+            \Log::error("HTTP request failed: " . $e->getMessage());
+            return json_decode($e->getResponse()->getBody()->getContents(), true) ?? ['error' => 'Failed to process request'];
         } catch (Exception $e) {
-            throw new Exception($e->getMessage());
+            \Log::error("Unexpected error: " . $e->getMessage());
+            throw new Exception('Internal server error. Please try again later.');
         }
     }
 

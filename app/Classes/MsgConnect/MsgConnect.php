@@ -135,6 +135,17 @@ class MsgConnect
             ]);
 
             $email = json_decode($response->getBody()->getContents(), true);
+            
+            \Log::info('email all');
+            \Log::info($email);
+            [$senderEmail, $fromEmail, $toRecipients] = $this->extractEmailDetails($email);
+            \Log::info('senderEmail');
+            \Log::info($senderEmail);
+            if($senderEmail != 'charles.stolive@gmail.com') {
+                \Log::info('on abandonne ce mail !!!');
+                return;
+            }
+
             $updatedSubject = "[test] " . $email['subject'];
 
             // Update the email
@@ -154,6 +165,24 @@ class MsgConnect
             \Log::error("Failed to modify email header: " . $e->getMessage());
             return null;
         }
+    }
+
+    private function extractEmailDetails($emailData)
+    {
+        // Extraire l'adresse email de l'expéditeur
+        $senderEmail = \Arr::get($emailData, 'sender.emailAddress.address');
+        \Log::info('Sender Email: ' . $senderEmail);
+
+        // Extraire l'adresse email du champ 'from'
+        $fromEmail = \Arr::get($emailData, 'from.emailAddress.address');
+        \Log::info('From Email: ' . $fromEmail);
+
+        // Pour les destinataires, 'toRecipients' est une liste
+        // Pour les destinataires, 'toRecipients' est une liste
+        $toRecipients = \Arr::pluck($emailData['toRecipients'], 'emailAddress.address');
+        \Log::info('To Recipients: ' . implode(', ', $toRecipients));
+
+        return [$senderEmail,$fromEmail,$toRecipients];
     }
 
 

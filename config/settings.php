@@ -7,8 +7,7 @@ return [
      * put them (manually) here.
      */
     'settings' => [
-        AnalyseSettings::class,
-
+        App\Settings\AnalyseSettings::class,
     ],
 
     /*

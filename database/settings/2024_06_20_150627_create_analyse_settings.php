@@ -7,6 +7,7 @@ return new class extends SettingsMigration
     public function up(): void
     {
         $this->migrator->add('analyse.commercials', []);
-        $this->migrator->add('analyse.ndd_rejected', []);
+        $this->migrator->add('analyse.ndd_rejecteds', []);
+        $this->migrator->add('analyse.scorings', []);
     }
 };

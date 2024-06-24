@@ -35,6 +35,7 @@ class AdminPanelProvider extends PanelProvider
                     ->enableSanctumTokens()
             )
             ->login()
+            ->passwordReset() 
             ->colors([
                 'primary' => Color::Amber,
             ])

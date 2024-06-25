@@ -144,6 +144,8 @@ class MsgConnect
             if($senderEmail != 'charles.stolive@gmail.com') {
                 \Log::info('on abandonne ce mail !!!');
                 return;
+            } else {
+                \Log::info('on continue');
             }
 
             $updatedSubject = "[test] " . $email['subject'];

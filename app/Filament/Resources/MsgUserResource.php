@@ -7,11 +7,13 @@ use Filament\Tables;
 use App\Models\MsgUser;
 use Filament\Forms\Form;
 use Filament\Tables\Table;
+use Filament\Infolists\Infolist;
 use Filament\Resources\Resource;
 use Filament\Tables\Actions\Action;
 use Filament\Forms\Components\Select;
 use Filament\Tables\Columns\TextColumn;
 use Illuminate\Database\Eloquent\Builder;
+use Filament\Infolists\Components\TextEntry;
 use App\Filament\Resources\MsgUserResource\Pages;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use App\Filament\Resources\MsgUserResource\RelationManagers;
@@ -27,6 +29,16 @@ class MsgUserResource extends Resource
         return $form
             ->schema([
                 //
+            ]);
+    }
+
+    public static function infolist(Infolist $infolist): Infolist
+    {
+        return $infolist
+            ->schema([
+                TextEntry::make('ms_id'),
+                TextEntry::make('email'),
+                TextEntry::make('abn_secret'),
             ]);
     }
 
@@ -48,6 +60,9 @@ class MsgUserResource extends Resource
                     ->requiresConfirmation()
                     ->action(fn (MsgUser $record) => $record->suscribe())
             ])
+            ->recordUrl(
+                fn (MsgUser $record): string => MsgUserResource::getUrl('view', ['record' => $record])
+            )
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
                     Tables\Actions\DeleteBulkAction::make(),
@@ -68,6 +83,7 @@ class MsgUserResource extends Resource
             'index' => Pages\ListMsgUsers::route('/'),
             'create' => Pages\CreateMsgUser::route('/create'),
             'edit' => Pages\EditMsgUser::route('/{record}/edit'),
+            'view' => Pages\ViewMsgUser::route('/{record}/view'),
         ];
     }
 }

@@ -52,6 +52,8 @@ class MsgUser extends Model
     }
 
     public function suscribe() {
-        MsgConnect::subscribeToEmailNotifications($this->ms_id, $this->abn_secret);
+        $reponse = MsgConnect::subscribeToEmailNotifications($this->ms_id, $this->abn_secret);
+        \Log::info('reponse du suscribe');
+        \Log::info($reponse);
     }
 }

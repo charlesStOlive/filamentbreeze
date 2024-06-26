@@ -58,12 +58,14 @@ class MsgConnect
 
     public function subscribeToEmailNotifications(string $userId, string $secretClientValue): array
     {
+        $expirationDate = now()->addHours(24);
+
         try {
             $subscription = [
                 'changeType' => 'created', // ou 'updated,deleted' selon les besoins
                 'notificationUrl' => 'https://filamentbreeze.notilac.fr/api/email-notifications', // Votre endpoint qui traitera les notifications
                 'resource' => 'users/' . $userId . '/mailFolders(\'Inbox\')/messages', // Chemin de la ressource à surveiller
-                'expirationDateTime' => now()->addHours(24)->toISOString(), // Date d'expiration de l'abonnement
+                'expirationDateTime' => $expirationDate->toISOString(), // Date d'expiration de l'abonnement
                 'clientState' => $secretClientValue,
             ];
 
@@ -82,8 +84,8 @@ class MsgConnect
         $tenantId = $data['tenantId'];
         $messageId = $data['resourceData']['id'];
 
-        \Log::info('tenantId: ' . $tenantId);
-        \Log::info('clientState: ' . $clientState);
+        // \Log::info('tenantId: ' . $tenantId);
+        // \Log::info('clientState: ' . $clientState);
 
         try {
             $user = $this->verifySubscriptionAndgetUser($clientState, $tenantId);
@@ -92,8 +94,8 @@ class MsgConnect
             throw $e; // Propagate the exception
         }
 
-        \Log::info('User after verification:');
-        \Log::info($user);
+        // \Log::info('User after verification:');
+        // \Log::info($user);
 
         $accessToken = $this->getAccessToken();
         return $this->modifyEmailHeaderAndCategory($user, $messageId, $accessToken);
@@ -108,8 +110,8 @@ class MsgConnect
 
         // Suppose that MsgUser is your Eloquent model and it has `mds_id` and `abn_secret` fields
         $user = MsgUser::where('abn_secret', $clientState)->first();
-        \Log::info('User from verifySubscriptionAndgetUser:');
-        \Log::info($user);
+        // \Log::info('User from verifySubscriptionAndgetUser:');
+        // \Log::info($user);
 
         if (!$user) {
             throw new \Exception("No user found matching the provided client state.");
@@ -136,19 +138,34 @@ class MsgConnect
 
             $email = json_decode($response->getBody()->getContents(), true);
             
-            \Log::info('email all');
-            \Log::info($email);
+            // \Log::info('email all');
+            // \Log::info($email);
             [$senderEmail, $fromEmail, $toRecipients] = $this->extractEmailDetails($email);
-            \Log::info('senderEmail');
-            \Log::info($senderEmail);
-            if($senderEmail != 'charles.stolive@gmail.com') {
+            $from = $senderEmail ?? $fromEmail;
+            \Log::info('senderEmail : ' . $from);
+
+            $msgEmailIn;
+            // \Log::info($senderEmail);
+            if($from != 'charles.stolive@gmail.com') {
+                $msgEmailIn = $user->msg_email_ins()->create([
+                    'from' => $from,
+                    // 'data' => $email,
+                    'status' => 'canceled',
+                    'status_message' => 'ne fait pas partie des emails ok',
+                ]);
                 \Log::info('on abandonne ce mail !!!');
                 return;
             } else {
+                $msgEmailIn = $user->msg_email_ins()->create([
+                    'from' => $from,
+                    // 'data' => $email,
+                    'status' => 'started',
+                ]);
                 \Log::info('on continue');
             }
 
             $updatedSubject = "[test] " . $email['subject'];
+            $category = 'good';
 
             // Update the email
             $response = $client->patch($updateEmailUrl, [
@@ -158,8 +175,13 @@ class MsgConnect
                 ],
                 'body' => json_encode([
                     'subject' => $updatedSubject,
-                    'categories' => ['good'] // Add the category
+                    'categories' => [$category] // Add the category
                 ])
+            ]);
+
+            $msgEmailIn->update([
+                'status' => 'rate',
+                'status_message' => $category,
             ]);
 
             return json_decode($response->getBody()->getContents(), true);

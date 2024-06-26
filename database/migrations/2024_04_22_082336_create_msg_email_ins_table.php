@@ -14,8 +14,10 @@ return new class extends Migration
         Schema::create('msg_email_ins', function (Blueprint $table) {
             $table->id();
             $table->string('msg_user_id')->nullable();
+            $table->string('from')->nullable();
             $table->string('data')->nullable();
             $table->string('status')->nullable();
+            $table->text('status_message')->nullable();
             $table->timestamps();
         });
     }

@@ -26,23 +26,25 @@ class AdminPanelProvider extends PanelProvider
     {
         return $panel
             ->default()
+            ->brandLogo(asset('images/cofim.png'))
+            ->brandLogoHeight('2rem')
             ->id('admin')
             ->path('admin')
             ->plugin(
                 BreezyCore::make()
                     ->myProfile()
-                    ->myProfileComponents([MyCustomComponent::class])
+                    // ->myProfileComponents([MyCustomComponent::class])
                     ->enableSanctumTokens()
             )
             ->login()
             ->passwordReset() 
             ->colors([
-                'primary' => Color::Green,
+                'primary' => '#329F4D',
             ])
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
             ->pages([
-                Pages\Dashboard::class,
+                // Pages\Dashboard::class,
             ])
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets')
             ->widgets([

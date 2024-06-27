@@ -16,6 +16,13 @@ class ManageAnalyse extends SettingsPage
 
     protected static string $settings = AnalyseSettings::class;
 
+    public static function getNavigationLabel(): string
+    {
+        return 'Options';
+    }
+
+    protected static ?int $navigationSort = 2;
+
     public function form(Form $form): Form
     {
         return $form

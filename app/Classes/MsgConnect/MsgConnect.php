@@ -6,7 +6,6 @@ namespace App\Classes\MsgConnect;
 * msgraph api documenation can be found at https://developer.msgraph.com/reference
 **/
 
-
 use App\Models\MsgToken;
 use Exception;
 use GuzzleHttp\Client;
@@ -17,7 +16,6 @@ use GuzzleHttp\Exception\GuzzleException;
 class MsgConnect
 {
     protected static string $baseUrl = 'https://graph.microsoft.com/v1.0/';
-
 
     public function isConnected(): bool
     {
@@ -74,6 +72,34 @@ class MsgConnect
         } catch (Exception $e) {
             \Log::error('Failed to subscribe to email notifications: ' . $e->getMessage());
             return ['success' => false, 'error' => 'Failed to subscribe to email notifications'];
+        }
+    }
+
+    public function unsubscribeFromEmailNotifications(string $subscriptionId): array
+    {
+        try {
+            $response = $this->guzzle('delete', 'subscriptions/' . $subscriptionId);
+            return ['success' => true, 'response' => $response];
+        } catch (Exception $e) {
+            \Log::error('Failed to unsubscribe from email notifications: ' . $e->getMessage());
+            return ['success' => false, 'error' => 'Failed to unsubscribe from email notifications'];
+        }
+    }
+
+    public function renewEmailNotificationSubscription(string $subscriptionId): array
+    {
+        $expirationDate = now()->addHours(24);
+
+        try {
+            $subscription = [
+                'expirationDateTime' => $expirationDate->toISOString(),
+            ];
+
+            $response = $this->guzzle('patch', 'subscriptions/' . $subscriptionId, $subscription);
+            return ['success' => true, 'response' => $response];
+        } catch (Exception $e) {
+            \Log::error('Failed to renew email notification subscription: ' . $e->getMessage());
+            return ['success' => false, 'error' => 'Failed to renew email notification subscription'];
         }
     }
 
@@ -149,7 +175,7 @@ class MsgConnect
             if($from != 'charles.stolive@gmail.com') {
                 $msgEmailIn = $user->msg_email_ins()->create([
                     'from' => $from,
-                    // 'data' => $email,
+                    'data' => $email,
                     'status' => 'canceled',
                     'status_message' => 'ne fait pas partie des emails ok',
                 ]);
@@ -158,7 +184,7 @@ class MsgConnect
             } else {
                 $msgEmailIn = $user->msg_email_ins()->create([
                     'from' => $from,
-                    // 'data' => $email,
+                    'data' => $email,
                     'status' => 'started',
                 ]);
                 \Log::info('on continue');
@@ -166,6 +192,13 @@ class MsgConnect
 
             $updatedSubject = "[test] " . $email['subject'];
             $category = 'good';
+
+            if($user->is_test) {
+                \Log::info('En test pas de modifications de mails');
+                return;
+            }
+
+            
 
             // Update the email
             $response = $client->patch($updateEmailUrl, [
@@ -208,8 +241,6 @@ class MsgConnect
 
         return [$senderEmail,$fromEmail,$toRecipients];
     }
-
-
 
     public function getAccessToken(bool $returnNullNoAccessToken = false, bool $redirect = false): mixed
     {

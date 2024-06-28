@@ -12,6 +12,7 @@ use Filament\Resources\Resource;
 use Filament\Tables\Actions\Action;
 use Filament\Forms\Components\Select;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Columns\ToggleColumn;
 use Illuminate\Database\Eloquent\Builder;
 use Filament\Infolists\Components\TextEntry;
 use App\Filament\Resources\MsgUserResource\Pages;
@@ -55,7 +56,8 @@ class MsgUserResource extends Resource
             ->columns([
                 TextColumn::make('email')->searchable()->sortable(),
                 TextColumn::make('ms_id')->searchable()->sortable(),
-                TextColumn::make('abn_secret'),
+                TextColumn::make('suscription_id'),
+                ToggleColumn::make('is_test')->label('En test'),
                 //
             ])
             ->filters([
@@ -66,6 +68,12 @@ class MsgUserResource extends Resource
                     ->label('Souscrire')
                     ->requiresConfirmation()
                     ->action(fn (MsgUser $record) => $record->suscribe())
+                    ->visible(fn (MsgUser $record): bool => $record->suscription_id === null),
+                Action::make('revoke')
+                    ->label('Révoquer')
+                    ->requiresConfirmation()
+                    ->action(fn (MsgUser $record) => $record->revoke())
+                    ->visible(fn (MsgUser $record): bool => $record->suscription_id !== null),
             ])
             ->recordUrl(
                 fn (MsgUser $record): string => MsgUserResource::getUrl('view', ['record' => $record])

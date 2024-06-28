@@ -8,6 +8,7 @@ use Filament\Forms\Form;
 use Filament\Tables\Table;
 use Filament\Tables\Actions\ViewAction;
 use Filament\Forms\Components\TextInput;
+use ValentinMorice\FilamentJsonColumn\FilamentJsonColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
@@ -56,7 +57,7 @@ class MsgEmailInsRelationManager extends RelationManager
                         TextInput::make('from'),
                         TextInput::make('status'),
                         TextInput::make('score'),
-                        TextInput::make('data'),
+                        FilamentJsonColumn::make('data')->viewerOnly(),
                     ]),
             ]);
     }

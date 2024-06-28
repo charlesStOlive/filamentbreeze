@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Facades\MsgConnect;
+use Illuminate\Support\Facades\App;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
@@ -24,6 +25,10 @@ class MsgUser extends Model
 
     public static function getApiMsgUsersIdsEmails()
     {
+        if (App::environment('local')) {
+            // pas d acces à msgraph en local 
+            return  [];
+        }
         $connected = MsgConnect::isConnected();
         if (!$connected) {
             MsgConnect::connect(false);
@@ -51,7 +56,8 @@ class MsgUser extends Model
         }
     }
 
-    public function suscribe() {
+    public function suscribe()
+    {
         $reponse = MsgConnect::subscribeToEmailNotifications($this->ms_id, $this->abn_secret);
         \Log::info('reponse du suscribe');
         \Log::info($reponse);

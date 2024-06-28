@@ -53,8 +53,8 @@ class MsgUserResource extends Resource
     {
         return $table
             ->columns([
-                TextColumn::make('ms_id'),
-                TextColumn::make('email'),
+                TextColumn::make('email')->searchable()->sortable(),
+                TextColumn::make('ms_id')->searchable()->sortable(),
                 TextColumn::make('abn_secret'),
                 //
             ])
@@ -80,7 +80,7 @@ class MsgUserResource extends Resource
     public static function getRelations(): array
     {
         return [
-            //
+            RelationManagers\MsgEmailInsRelationManager::class,
         ];
     }
 

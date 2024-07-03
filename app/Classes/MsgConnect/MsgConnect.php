@@ -61,7 +61,7 @@ class MsgConnect
         try {
             $subscription = [
                 'changeType' => 'created', // ou 'updated,deleted' selon les besoins
-                'notificationUrl' => 'https://filamentbreeze.notilac.fr/api/email-notifications', // Votre endpoint qui traitera les notifications
+                'notificationUrl' => url('/api/email-notifications'), // Votre endpoint qui traitera les notifications
                 'resource' => 'users/' . $userId . '/mailFolders(\'Inbox\')/messages', // Chemin de la ressource à surveiller
                 'expirationDateTime' => $expirationDate->toISOString(), // Date d'expiration de l'abonnement
                 'clientState' => $secretClientValue,

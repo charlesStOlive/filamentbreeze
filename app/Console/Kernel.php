@@ -4,6 +4,7 @@ namespace App\Console;
 
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
+use App\Models\MsgUser;
 
 class Kernel extends ConsoleKernel
 {
@@ -12,7 +13,14 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule): void
     {
-        // $schedule->command('inspire')->hourly();
+        $schedule->call(function () {
+            \Log::info('refresh susriptions');
+            $msgUsers = MsgUser::where('suscription_id', '<>', null)->get();
+            foreach ($msgUsers as $msgUser) {
+                // Call your renew function here
+                $msgUser->refreshSuscription();
+            }
+        })->dailyAt('18:00')->timezone('Europe/Paris');
     }
 
     /**

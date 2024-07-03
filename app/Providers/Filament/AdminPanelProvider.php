@@ -34,7 +34,7 @@ class AdminPanelProvider extends PanelProvider
                 BreezyCore::make()
                     ->myProfile()
                     // ->myProfileComponents([MyCustomComponent::class])
-                    ->enableSanctumTokens()
+                    // ->enableSanctumTokens()
             )
             ->login()
             ->passwordReset() 

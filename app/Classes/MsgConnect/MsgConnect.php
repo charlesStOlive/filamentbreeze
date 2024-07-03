@@ -56,7 +56,7 @@ class MsgConnect
 
     public function subscribeToEmailNotifications(string $userId, string $secretClientValue): array
     {
-        $expirationDate = now()->addHours(24);
+        $expirationDate = now()->addHours(36);
 
         try {
             $subscription = [
@@ -88,7 +88,7 @@ class MsgConnect
 
     public function renewEmailNotificationSubscription(string $subscriptionId): array
     {
-        $expirationDate = now()->addHours(24);
+        $expirationDate = now()->addHours(36);
 
         try {
             $subscription = [

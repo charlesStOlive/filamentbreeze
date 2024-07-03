@@ -38,7 +38,7 @@ class MsgUser extends Model
         if (!$connected) {
             MsgConnect::connect(false);
         }
-        \Log::info('connecté à ms graph');
+        // \Log::info('connecté à ms graph');
         $users = MsgConnect::get('users');
         $users = $users['value'] ?? [];
         $existingEmails = MsgUser::pluck('email')->toArray();
@@ -67,20 +67,17 @@ class MsgUser extends Model
         $reponse = MsgConnect::subscribeToEmailNotifications($this->ms_id, $this->abn_secret);
         \Log::info('reponse du suscribe');
         \Log::info($reponse);
-        $apiResponse = $reponse['response'] ?? false;
-        \Log::info('apiResponse');
-        \Log::info($apiResponse);
-        if($apiResponse['id'] ?? false) {
-            $this->suscription_id = $apiResponse['id']; 
-            $this->expire_at = Carbon::parse($apiResponse['expirationDateTime']);
+        if($reponse['response']['id'] ?? false) {
+            $this->suscription_id = $reponse['response']['id']; 
+            $this->expire_at = Carbon::parse($reponse['response']['expirationDateTime']);
             $this->save();
         } else {
-            \Log::info('pas ok  apireponse ');
+            \Log::info('pas ok  apireponse ',$reponse);
         }
         
     }
 
-    public function revoke()
+    public function revokeSuscription()
     {
         $reponse = MsgConnect::unsubscribeFromEmailNotifications($this->suscription_id);
         \Log::info('reponse du unsuscribe');
@@ -91,6 +88,19 @@ class MsgUser extends Model
             $this->save();
         } else {
             \Log::info('pas de sucess ???  ');
+        }
+    }
+
+    public function refreshSuscription()
+    {
+        $reponse = MsgConnect::renewEmailNotificationSubscription($this->suscription_id);
+        \Log::info('reponse du refresh');
+        \Log::info($reponse);
+        if($reponse['success'] ?? false) {
+            $this->expire_at = Carbon::parse($reponse['response']['expirationDateTime']);
+            $this->save();
+        } else {
+            \Log::info('pas de sucess ???  ' ,$reponse);
         }
     }
 }

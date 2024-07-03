@@ -24,9 +24,8 @@ class MsgEmailNotification extends Controller
         }
 
         $notificationData = $request->all();
-        \Log::error('notificationData');
-        \Log::error($notificationData);
-    
+        // \Log::error('notificationData');
+        // \Log::error($notificationData);
         // Traitement de la notification
         try {
             $result = MsgConnect::processEmailNotification($notificationData);
@@ -38,22 +37,4 @@ class MsgEmailNotification extends Controller
         }
     }
 
-    // private function updateEmailSubject($accessToken, $userId, $messageId, $prefix)
-    // {
-    //     $getEmailResponse = Http::withHeaders([
-    //         'Authorization' => 'Bearer ' . $accessToken,
-    //     ])->get("https://graph.microsoft.com/v1.0/users/{$userId}/messages/{$messageId}");
-
-    //     $email = $getEmailResponse->json();
-    //     $updatedSubject = $prefix . $email['subject'];
-
-    //     $updateResponse = Http::withHeaders([
-    //         'Authorization' => 'Bearer ' . $accessToken,
-    //         'Content-Type' => 'application/json'
-    //     ])->patch("https://graph.microsoft.com/v1.0/users/{$userId}/messages/{$messageId}", [
-    //         'subject' => $updatedSubject
-    //     ]);
-
-    //     return $updateResponse->json();
-    // }
 }

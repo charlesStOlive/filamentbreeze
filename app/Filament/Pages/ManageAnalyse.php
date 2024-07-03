@@ -1,4 +1,4 @@
-<?php
+<?php 
 
 namespace App\Filament\Pages;
 
@@ -9,6 +9,9 @@ use App\Settings\AnalyseSettings;
 use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Actions;
+use Filament\Forms\Components\Actions\Action;
+use App\Classes\Services\SellsyConnect;
 
 class ManageAnalyse extends SettingsPage
 {
@@ -26,7 +29,6 @@ class ManageAnalyse extends SettingsPage
     public function form(Form $form): Form
     {
         return $form
-
             ->schema([
                 Section::make('Commerciaux')
                     ->description('Liste des adresses emails commerciaux qui seront exploités lors d\'un transfert de mail.')
@@ -59,6 +61,25 @@ class ManageAnalyse extends SettingsPage
                             ])
                             ->addActionLabel('Ajouter un Nom de domaine')
                             ->grid(2),
+                    ]),
+                Section::make('Test de connection')
+                    ->description('Tester la connexion avec Sellsy.')
+                    ->schema([
+                        Actions::make([
+                            Action::make('testConnection')
+                                ->label('Tester la connexion')
+                                ->icon('heroicon-o-play')
+                                ->color('primary')
+                                ->form([
+                                    TextInput::make('parametre')->required()->label('Paramètre de test'),
+                                ])
+                                ->action(function (array $data) {
+                                    $sellsy = new SellsyConnect();
+                                    $result = $sellsy->test($data['parametre']);
+                                })
+                                ->modalHeading('Tester la connexion')
+                                ->modalButton('Exécuter le test'),
+                        ]),
                     ]),
             ])->columns(1);
     }

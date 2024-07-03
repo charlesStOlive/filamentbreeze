@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Classes\MsgConnect;
+namespace App\Classes\Services;
 
 /*
 * msgraph api documenation can be found at https://developer.msgraph.com/reference
@@ -40,8 +40,16 @@ class MsgConnect
             'client_secret' => config('msgraph.clientSecret'),
             'grant_type' => 'client_credentials',
         ];
-
-        $token = $this->doPost(config('msgraph.tenantUrlAccessToken'), $params);
+        $token;
+        try {
+            $client = new Client;
+            $response = $client->post(config('msgraph.tenantUrlAccessToken'), ['form_params' => $params]);
+            $token =  json_decode($response->getBody()->getContents());
+        } catch (ClientException $e) {
+            return json_decode(($e->getResponse()->getBody()->getContents()));
+        } catch (Exception $e) {
+            throw new Exception($e->getMessage());
+        }
 
         if (isset($token->access_token)) {
             $this->storeToken($token->access_token, '', $token->expires_in);
@@ -50,18 +58,21 @@ class MsgConnect
         if ($redirect) {
             return redirect(config('msgraph.msgraphLandingUri'));
         }
-
         return $token->access_token ?? null;
+    }
+
+    public function getUsers() {
+        return $this->guzzle('get', 'users');
     }
 
     public function subscribeToEmailNotifications(string $userId, string $secretClientValue): array
     {
-        $expirationDate = now()->addHours(36);
+        $expirationDate = now()->addHours(24);
 
         try {
             $subscription = [
                 'changeType' => 'created', // ou 'updated,deleted' selon les besoins
-                'notificationUrl' => url('/api/email-notifications'), // Votre endpoint qui traitera les notifications
+                'notificationUrl' =>  url('/api/email-notifications'), // Votre endpoint qui traitera les notifications
                 'resource' => 'users/' . $userId . '/mailFolders(\'Inbox\')/messages', // Chemin de la ressource à surveiller
                 'expirationDateTime' => $expirationDate->toISOString(), // Date d'expiration de l'abonnement
                 'clientState' => $secretClientValue,
@@ -88,13 +99,11 @@ class MsgConnect
 
     public function renewEmailNotificationSubscription(string $subscriptionId): array
     {
-        $expirationDate = now()->addHours(36);
-
+        $expirationDate = now()->addHours(24);
         try {
             $subscription = [
                 'expirationDateTime' => $expirationDate->toISOString(),
             ];
-
             $response = $this->guzzle('patch', 'subscriptions/' . $subscriptionId, $subscription);
             return ['success' => true, 'response' => $response];
         } catch (Exception $e) {
@@ -110,18 +119,12 @@ class MsgConnect
         $tenantId = $data['tenantId'];
         $messageId = $data['resourceData']['id'];
 
-        // \Log::info('tenantId: ' . $tenantId);
-        // \Log::info('clientState: ' . $clientState);
-
         try {
             $user = $this->verifySubscriptionAndgetUser($clientState, $tenantId);
         } catch (\Exception $e) {
             \Log::error("Error in subscription verification: " . $e->getMessage());
             throw $e; // Propagate the exception
         }
-
-        // \Log::info('User after verification:');
-        // \Log::info($user);
 
         $accessToken = $this->getAccessToken();
         return $this->modifyEmailHeaderAndCategory($user, $messageId, $accessToken);
@@ -133,45 +136,23 @@ class MsgConnect
             \Log::info('Différence entre msgraph.tenantId et tenantId: '.config('msgraph.tenantId'));
             throw new \Exception("Tenant ID does not match the configured value.");
         }
-
         // Suppose that MsgUser is your Eloquent model and it has `mds_id` and `abn_secret` fields
         $user = MsgUser::where('abn_secret', $clientState)->first();
-        // \Log::info('User from verifySubscriptionAndgetUser:');
-        // \Log::info($user);
-
         if (!$user) {
             throw new \Exception("No user found matching the provided client state.");
         }
-
         return $user;
     }
 
     public function modifyEmailHeaderAndCategory($user, $messageId)
     {
         $accessToken = $this->getAccessToken(); // Ensure you have a valid access token
-        $getEmailUrl = self::$baseUrl . "users/{$user->ms_id}/messages/{$messageId}";
-        $updateEmailUrl = $getEmailUrl;
-
-        $client = new Client();
         try {
             // Get the current email to modify
-            $response = $client->get($getEmailUrl, [
-                'headers' => [
-                    'Authorization' => 'Bearer ' . $accessToken,
-                    'Content-Type' => 'application/json'
-                ]
-            ]);
-
-            $email = json_decode($response->getBody()->getContents(), true);
-            
-            // \Log::info('email all');
-            // \Log::info($email);
+            $email = $this->guzzle('get', "users/{$user->ms_id}/messages/{$messageId}");
             [$senderEmail, $fromEmail, $toRecipients] = $this->extractEmailDetails($email);
             $from = $senderEmail ?? $fromEmail;
-            \Log::info('senderEmail : ' . $from);
-
             $msgEmailIn;
-            // \Log::info($senderEmail);
             if($from != 'charles.stolive@gmail.com') {
                 $msgEmailIn = $user->msg_email_ins()->create([
                     'from' => $from,
@@ -187,7 +168,6 @@ class MsgConnect
                     'data' => $email,
                     'status' => 'started',
                 ]);
-                \Log::info('on continue');
             }
 
             $updatedSubject = "[test] " . $email['subject'];
@@ -198,26 +178,18 @@ class MsgConnect
                 return;
             }
 
-            
-
             // Update the email
-            $response = $client->patch($updateEmailUrl, [
-                'headers' => [
-                    'Authorization' => 'Bearer ' . $accessToken,
-                    'Content-Type' => 'application/json'
-                ],
-                'body' => json_encode([
-                    'subject' => $updatedSubject,
-                    'categories' => [$category] // Add the category
-                ])
-            ]);
-
+            $updateData = [
+                'subject' => $updatedSubject,
+                'categories' => [$category] // Add the category
+            ];
+            $response = $this->guzzle('patch', "users/{$user->ms_id}/messages/{$messageId}", $updateData);
             $msgEmailIn->update([
                 'status' => 'rate',
                 'status_message' => $category,
             ]);
 
-            return json_decode($response->getBody()->getContents(), true);
+            return $response;
         } catch (Exception $e) {
             \Log::error("Failed to modify email header: " . $e->getMessage());
             return null;
@@ -228,17 +200,11 @@ class MsgConnect
     {
         // Extraire l'adresse email de l'expéditeur
         $senderEmail = \Arr::get($emailData, 'sender.emailAddress.address');
-        \Log::info('Sender Email: ' . $senderEmail);
-
         // Extraire l'adresse email du champ 'from'
         $fromEmail = \Arr::get($emailData, 'from.emailAddress.address');
-        \Log::info('From Email: ' . $fromEmail);
-
-        // Pour les destinataires, 'toRecipients' est une liste
         // Pour les destinataires, 'toRecipients' est une liste
         $toRecipients = \Arr::pluck($emailData['toRecipients'], 'emailAddress.address');
-        \Log::info('To Recipients: ' . implode(', ', $toRecipients));
-
+        // \Log::info('To Recipients: ' . implode(', ', $toRecipients));
         return [$senderEmail,$fromEmail,$toRecipients];
     }
 
@@ -284,22 +250,22 @@ class MsgConnect
         ]);
     }
 
-    /**
-     * @throws Exception
-     */
-    public function __call(string $function, array $args): mixed
-    {
-        $options = ['get', 'post', 'patch', 'put', 'delete'];
-        $path = (isset($args[0])) ? $args[0] : null;
-        $data = (isset($args[1])) ? $args[1] : [];
+    // /**
+    //  * @throws Exception
+    //  */
+    // public function __call(string $function, array $args): mixed
+    // {
+    //     $options = ['get', 'post', 'patch', 'put', 'delete'];
+    //     $path = (isset($args[0])) ? $args[0] : null;
+    //     $data = (isset($args[1])) ? $args[1] : [];
 
-        if (in_array($function, $options)) {
-            return self::guzzle($function, $path, $data);
-        } else {
-            //request verb is not in the $options array
-            throw new Exception($function . ' is not a valid HTTP Verb');
-        }
-    }
+    //     if (in_array($function, $options)) {
+    //         return self::guzzle($function, $path, $data);
+    //     } else {
+    //         //request verb is not in the $options array
+    //         throw new Exception($function . ' is not a valid HTTP Verb');
+    //     }
+    // }
 
     protected function isJson($data): bool
     {
@@ -337,20 +303,6 @@ class MsgConnect
      * @throws GuzzleException
      * @throws Exception
      */
-    protected static function doPost(string $url, array $params): mixed
-    {
-        try {
-            $client = new Client;
-            $response = $client->post($url, ['form_params' => $params]);
-
-            return json_decode($response->getBody()->getContents());
-        } catch (ClientException $e) {
-            return json_decode(($e->getResponse()->getBody()->getContents()));
-        } catch (Exception $e) {
-            throw new Exception($e->getMessage());
-        }
-    }
-
     public function getPagination(array $data, string $top = '0', string $skip = '0'): array
     {
         $total = $data['@odata.count'] ?? 0;

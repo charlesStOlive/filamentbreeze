@@ -10,8 +10,9 @@ use Filament\Forms\Components\Section;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Actions;
+use ValentinMorice\FilamentJsonColumn\FilamentJsonColumn;
 use Filament\Forms\Components\Actions\Action;
-use App\Classes\Services\SellsyConnect;
+use App\Classes\Services\SellsyService;
 
 class ManageAnalyse extends SettingsPage
 {
@@ -71,16 +72,27 @@ class ManageAnalyse extends SettingsPage
                                 ->icon('heroicon-o-play')
                                 ->color('primary')
                                 ->form([
-                                    TextInput::make('parametre')->required()->label('Paramètre de test'),
+                                    TextInput::make('parametre')->label('Paramètre de test'),
                                 ])
-                                ->action(function (array $data) {
-                                    $sellsy = new SellsyConnect();
-                                    $result = $sellsy->test($data['parametre']);
-                                })
                                 ->modalHeading('Tester la connexion')
-                                ->modalButton('Exécuter le test'),
+                                ->modalButton('Exécuter le test')
+                                ->action(function (Forms\Set $set, array $data) {
+                                    // $email = $data['parametre'] ?? null;
+                                    $sellsy = new SellsyService();
+                                    $email = trim($data['parametre']);
+                                    if(empty($email)) {
+                                        $email = 'alexis.clement@suscillon.com';
+                                    }
+                                    $result = $sellsy->searchByEmail($email);
+                                    $set('test_result', $result);
+                                    
+                                }),
+                                
                         ]),
+                        FilamentJsonColumn::make('test_result')->viewerOnly(),
                     ]),
             ])->columns(1);
     }
+
+
 }

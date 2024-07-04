@@ -43,18 +43,27 @@ class MsgUser extends Model
         }
 
         $users = MsgConnect::getUsers();
-        \Log::info('Users fetched from MS Graph API: ' . json_encode($users));
+        \Log::info('Users fetched from MS Graph API: ');
+        \Log::info($users);
         
         $users = $users['value'] ?? [];
         $existingEmails = MsgUser::pluck('email')->toArray();
-        \Log::info("Existing emails: " . json_encode($existingEmails));
+        \Log::info("Existing emails----------------------------: ");
+        \Log::info($existingEmails);
         
         $filteredUsers = array_filter($users, function ($user) use ($existingEmails) {
+            $email = $user['mail'] ?? null;
+            if(!$email) {
+                return false;
+            }
             return !in_array($user['mail'], $existingEmails);
         });
         
-        \Log::info('Filtered users: ' . json_encode($filteredUsers));
-        return \Arr::pluck($filteredUsers, 'mail', 'id');
+        \Log::info('Filtered users------------------------------: ');
+        \Log::info($filteredUsers);
+        $mailAndids = \Arr::pluck($filteredUsers, 'mail', 'id');
+        \Log::info($mailAndids);
+        return $mailAndids;
     }
 
     public static function getApiMsgUser($id)

@@ -62,7 +62,9 @@ class MsgConnect
     }
 
     public function getUsers() {
-        return $this->guzzle('get', 'users');
+        $users = $this->guzzle('get', 'users');
+        \Log::info($users);
+        return $users;
     }
 
     public function subscribeToEmailNotifications(string $userId, string $secretClientValue): array

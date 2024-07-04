@@ -23,7 +23,8 @@ class ListMsgUsers extends ListRecords
                     Select::make('msg_id')
                         ->label('Choisissez un Email')
                         ->options(MsgUser::getApiMsgUsersIdsEmails())
-                        ->searchable(),
+                        ->searchable()
+                        ->lazy(),
                 ])
                 ->action(function (array $data): void {
                     $msgId = $data['msg_id'];

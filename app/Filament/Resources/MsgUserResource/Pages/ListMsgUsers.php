@@ -22,9 +22,12 @@ class ListMsgUsers extends ListRecords
                 ->form([
                     Select::make('msg_id')
                         ->label('Choisissez un Email')
-                        ->options(MsgUser::getApiMsgUsersIdsEmails())
-                        ->searchable()
-                        ->lazy(),
+                        ->options(function () {
+                        // Charger les options uniquement lorsque le champ est interactif
+                        return MsgUser::getApiMsgUsersIdsEmails();
+                    })
+                    ->searchable()
+                    ->lazy(),
                 ])
                 ->action(function (array $data): void {
                     $msgId = $data['msg_id'];

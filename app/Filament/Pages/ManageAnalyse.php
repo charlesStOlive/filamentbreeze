@@ -1,18 +1,21 @@
-<?php 
+<?php
 
 namespace App\Filament\Pages;
 
 use Filament\Forms;
+use App\Models\MsgUser;
 use Filament\Forms\Form;
 use Filament\Pages\SettingsPage;
 use App\Settings\AnalyseSettings;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Actions;
 use Filament\Forms\Components\Section;
+use App\Classes\Services\SellsyService;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Actions;
-use ValentinMorice\FilamentJsonColumn\FilamentJsonColumn;
+use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Actions\Action;
-use App\Classes\Services\SellsyService;
+use ValentinMorice\FilamentJsonColumn\FilamentJsonColumn;
 
 class ManageAnalyse extends SettingsPage
 {
@@ -31,17 +34,7 @@ class ManageAnalyse extends SettingsPage
     {
         return $form
             ->schema([
-                Section::make('Commerciaux')
-                    ->description('Liste des adresses emails commerciaux qui seront exploités lors d\'un transfert de mail.')
-                    ->schema([
-                        Repeater::make('commercials')
-                            ->schema([
-                                TextInput::make('email')->email()->required(),
-                            ])
-                            ->addActionLabel('Ajouter un commercial')
-                            ->grid(2),
-                    ]),
-                Section::make('Scoring')
+                Section::make('Scorings')
                     ->description('Grille des scores.')
                     ->schema([
                         Repeater::make('scorings')
@@ -53,14 +46,46 @@ class ManageAnalyse extends SettingsPage
                             ->addActionLabel('Ajouter un score mix/max')
                             ->columns(3),
                     ]),
-                Section::make('Nom de domaine exterieurs')
-                    ->description('Liste des noms de domainex exterieurs qui ne seront pas étudié si le contact est inconnu.')
+                Section::make('contact_scorings')
+                    ->description('Grille des scores des metiers.')
                     ->schema([
-                        Repeater::make('ndd_rejecteds')
+                        Repeater::make('contact_scorings')
+                            ->schema([
+                                TextInput::make('name')->columnSpan(2)->required(),
+                                TextInput::make('score')->integer()->required(),
+                            ])
+                            ->addActionLabel('Ajouter un métier de contact')
+                            ->columns(3),
+                    ]),
+
+                Section::make('Commerciaux')
+                    ->description('Liste des adresses emails commerciaux qui seront exploités lors d\'un transfert de mail.')
+                    ->schema([
+                        Repeater::make('commercials')
+                            ->schema([
+                                TextInput::make('email')->email()->required(),
+                            ])
+                            ->addActionLabel('Ajouter un commercial')
+                            ->grid(2),
+                    ]),
+                Section::make('Nom de domaines internes')
+                    ->description('Liste des noms de domainex internes qui ne seront pas étudié sauf si commercial.')
+                    ->schema([
+                        Repeater::make('internal_ndds')
                             ->schema([
                                 TextInput::make('ndd')->prefixIcon('heroicon-m-at-symbol')->placeholder('exemple.com')->required(),
                             ])
-                            ->addActionLabel('Ajouter un Nom de domaine')
+                            ->addActionLabel('Ajouter un Nom de domaine interne')
+                            ->grid(2),
+                    ]),
+                Section::make('Nom de domaine exterieurs')
+                    ->description('Liste des noms de domainex exterieurs qui ne seront pas étudié si le contact est inconnu.')
+                    ->schema([
+                        Repeater::make('ndd_client_rejecteds')
+                            ->schema([
+                                TextInput::make('ndd')->prefixIcon('heroicon-m-at-symbol')->placeholder('exemple.com')->required(),
+                            ])
+                            ->addActionLabel('Ajouter un Nom de domaine externe')
                             ->grid(2),
                     ]),
                 Section::make('Test de connection')
@@ -68,31 +93,44 @@ class ManageAnalyse extends SettingsPage
                     ->schema([
                         Actions::make([
                             Action::make('testConnection')
-                                ->label('Tester la connexion')
+                                ->label('Simuler un email')
                                 ->icon('heroicon-o-play')
                                 ->color('primary')
                                 ->form([
-                                    TextInput::make('parametre')->label('Paramètre de test'),
+                                    Select::make('msg_id')
+                                        ->label('Choisissez un Email')
+                                        ->options(function () {
+                                            // Charger les options uniquement lorsque le champ est interactif
+                                            return MsgUser::getLocalUser();
+                                        }),
+                                    TextInput::make('test_from')->label('From')->default('alexis.clement@suscillon.com'),
+                                    TextInput::make('test_tos')->label('to')->helperText('Séparer les valeurs par une ,')->default('test@test.com'),
+                                    TextInput::make('subject')->label('Sujet')->default('Hello World !'),
+                                    RichEditor::make('body')->label('body')->default('<p>Du contenu</p>'),
                                 ])
-                                ->modalHeading('Tester la connexion')
-                                ->modalButton('Exécuter le test')
+                                ->modalHeading('Créer un faux email')
+                                ->modalSubmitActionLabel('Exécuter le test')
                                 ->action(function (Forms\Set $set, array $data) {
                                     // $email = $data['parametre'] ?? null;
-                                    $sellsy = new SellsyService();
-                                    $email = trim($data['parametre']);
-                                    if(empty($email)) {
-                                        $email = 'alexis.clement@suscillon.com';
+                                    $data['from']['emailAddress']['address'] = $email = trim($data['test_from']);
+                                    $toResipients = [];
+                                    $tos = explode(',', trim($data['test_tos']));
+                                    foreach ($tos as $to) {
+                                        $toResipients[] = ['emailAddress' => ['address' => trim($to)]];
                                     }
+                                    $data['toRecipients'] = $toResipients;
+                                    unset($data['test_from']);
+                                    unset($data['test_tos']);
+                                    \Log::info($data);
+                                    $sellsy = new SellsyService();
                                     $result = $sellsy->searchByEmail($email);
                                     $set('test_result', $result);
-                                    
+
                                 }),
-                                
+
                         ]),
                         FilamentJsonColumn::make('test_result')->viewerOnly(),
                     ]),
             ])->columns(1);
     }
-
-
 }

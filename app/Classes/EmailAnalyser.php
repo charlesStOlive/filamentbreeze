@@ -8,15 +8,18 @@ namespace App\Classes;
 
 use App\Models\MsgUser;
 use Illuminate\Support\Arr;
+use App\Classes\Services\SellsyService;
+use App\Settings\AnalyseSettings;
 
 class EmailAnalyser
 {
-    private array $emailData; 
+    private array $emailData;
     public string $from;
     public array $toRecipients;
     public string $fromNdd;
     public string $subject;
     public string $category;
+    public string $body;
     public bool $forbiddenNdd = false;
     public bool $forward = false;
     public bool $has_score = false;
@@ -24,24 +27,33 @@ class EmailAnalyser
     public bool $hasClient = false;
     public int $score = 0;
     private MsgUser $user;
+    private $emailIn;
 
-    public function __construct(array $email, MsgUser $user) {
-        $this->emailData = $email;
+    public function __construct(array $email, MsgUser $user)
+    {
+
         $this->user = $user;
-        $this->extractEmailDetails();
+        $this->emailIn = $user->msg_email_ins()->make();
+        $this->extractEmailDetails($email);
     }
 
-    private function extractEmailDetails(): void {
+    private function extractEmailDetails($email): void
+    {
         // Extraire les infos de bases.
-        $sender = Arr::get($this->emailData, 'sender.emailAddress.address');
-        $from = Arr::get($this->emailData, 'from.emailAddress.address');
-        $this->from = $from ?? $sender;
-        $this->fromNdd = $this->getDomainFromEmail($this->from);
-        $this->body = Arr::get($this->emailData, 'body');
-        $this->toRecipients = Arr::pluck($this->emailData['toRecipients'], 'emailAddress.address');
+        $this->emailIn->email_data = $email;
+        $sender = Arr::get($email, 'sender.emailAddress.address');
+        $from = Arr::get($email, 'from.emailAddress.address');
+        $this->emailIn->from = $from ?? $sender;
+        $this->emailIn->subject = $subject = Arr::get($email, 'subject');
+        if (stripos($subject, 'Re:') === 0 || stripos($subject, 'Fwd:') === 0 || stripos($subject, 'Fw:') === 0) {
+            $this->emailIn->is_forwarded = true;
+        }
+        $this->emailIn->tos = Arr::pluck($email, 'toRecipients.emailAddress.address');
+        $this->emailIn->Save();
     }
 
-    public function analyse(): void {
+    public function analyse(): void
+    {
         $emailToAnalyse = $this->checkIfEmailIsToAnalyse();
         if (!$emailToAnalyse) {
             return;
@@ -50,94 +62,90 @@ class EmailAnalyser
             $this->forwardEmailFromCommerciaux();
             return;
         }
-        $this->getContactAndClient(); 
+        $this->getContactAndClient();
     }
 
-    private function checkIfEmailIsToAnalyse() {
-        if (in_array($this->fromNdd, $this->getForbiddenNdd()) && !in_array($this->from, $this->getCommerciaux())) {
-            $this->proceedUpdate('ndd_blocked');
-            return false;
-        } else if (in_array($this->from, $this->getCommerciaux())) {
+    private function checkIfEmailIsToAnalyse()
+    {
+        if (in_array($this->emailIn->from, $this->getForbiddenNdd()) && !in_array($this->emailIn->from, $this->getCommerciaux())) {
+            $this->emailIn->is_canceled = true;
+            $this->emailIn->status = 'Abandonnée NDD';
+            $this->emailIn->save();
+            return;
+        } else if (in_array($this->emailIn->from, $this->getCommerciaux())) {
+            $this->emailIn->is_from_commercial = true;
             return 'commerciaux';
         } else {
             return true;
         }
     }
 
-    private function getContactAndClient(): void {
-        $contacts = $this->getContacts();
-        foreach ($contacts as $contact) {
-            if ($contact['email'] == $this->from) {
-                $this->hasContact = true;
-                $client = $this->getClientById($contact['entreprise_id']);
-                if ($client) {
-                    $this->hasClient = true;
-                    $this->score += $contact['score'] + $client['score'];
-                }
-                break;
-            }
+    private function getContactAndClient(): void
+    {
+    }
+
+    function findEmailInBody($body)
+    {
+        // La regex pour capturer les emails précédés de 'emailde:'
+        $regex = '/emailde:\s*([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/';
+
+        // Recherche des correspondances
+        if (preg_match($regex, $body, $matches)) {
+            // Si une correspondance est trouvée, retourner l'email
+            return $matches[1];
+        } else {
+            // Si aucune correspondance n'est trouvée, retourner null
+            return null;
         }
     }
 
-    private function getClientById(int $id): ?array {
-        foreach ($this->getClients() as $client) {
-            if ($client['id'] == $id) {
-                return $client;
-            }
-        }
-        return null;
+    private function getCommerciaux(): array
+    {
+        return app(AnalysisSettings::class)->commercials;
     }
 
-    private function getCommerciaux(): array {
-        return [
-            // En attente de données
-        ];
+    private function getInternalNdds(): array
+    {
+        return app(AnalysisSettings::class)->internal_ndds;
     }
 
-    private function getForbiddenNdd(): array {
-        return [
-            // En attente de données
-        ];
+    private function getForbiddenClientNdd(): array
+    {
+        return app(AnalysisSettings::class)->ndd_client_rejecteds;
     }
 
-    private function getForbiddenClientNdd(): array {
-        return [
-            // En attente de données
-        ];
+    private function getScorings(): array
+    {
+        return app(AnalysisSettings::class)->scorings;
     }
 
-    private function proceedUpdate(string $status): void {
-        // Code to update status
+    private function getContactScorings(): array
+    {
+        return app(AnalysisSettings::class)->contact_scorings;
     }
 
-    private function forwardEmailFromCommerciaux(): void {
+    private function forwardEmailFromCommerciaux(): void
+    {
         // Code to forward email from commerciaux
     }
 
-    // Helpers
-    private function getDomainFromEmail(string $email): ?string {
-        $parts = explode('@', $email);
-        return $parts[1] ?? null;
-    }
-    public function isReply(): bool {
-        // Vérifier si le sujet contient "Re:"
-        return stripos($this->subject, 'Re:') === 0;
-    }
-
-    public function isForward(): bool {
-        // Vérifier si le sujet contient "Fwd:" ou "Fw:"
-        return stripos($this->subject, 'Fwd:') === 0 || stripos($this->subject, 'Fw:') === 0;
-    }
-
     // Données temp pour test
-    public function getContacts(): array {
+    public function getContacts(): array
+    {
         return [
             [
                 'email' => 'charles@notilac.fr',
                 'name' => 'Charles',
                 'score' => 5,
-                'interlocuteur' => 'jean@owner.com',
-                'entreprise_id' => 45
+                'x_staff' => [
+                    'name' => 'Charles',
+                    'email' => 'jean@owner.com'
+                ],
+                'x_contact' => [
+                    'name' => 'Charles',
+                    'email' => 'jean@owner.com'
+                ],
+
             ],
             [
                 'email' => 'michel@notilac.fr',
@@ -154,7 +162,8 @@ class EmailAnalyser
         ];
     }
 
-    public function getClients(): array {
+    public function getClients(): array
+    {
         return [
             [
                 'id' => 45,

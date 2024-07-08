@@ -23,6 +23,8 @@ class MsgEmailIn extends Model
 
     protected $casts = [
         'data' => 'array',
+        'tos' => 'array',
+        'data_sellsy' => 'array'
     ];
 
     public function msg_email_user()

@@ -14,16 +14,26 @@ return new class extends Migration
         Schema::create('msg_email_ins', function (Blueprint $table) {
             $table->id();
             $table->string('msg_user_id')->nullable();
+            $table->json('data_mail')->nullable();
             $table->string('from')->nullable();
-            $table->string('tos')->nullable();
-            $table->json('data')->nullable();
+            $table->string('subject')->nullable();
+            $table->string('new_subject')->nullable();
+            $table->json('tos')->nullable();
+            $table->boolean('is_forwarded')->default(0);
+            $table->boolean('is_canceled')->default(0);
+            $table->boolean('has_sellsy_call')->default(0);
+            $table->json('data_sellsy')->nullable();
+            $table->boolean('is_from_commercial')->default(0);
+            $table->boolean('has_regex_key')->default(0);
+            $table->boolean('willbe_forwarded')->default(0);
+            $table->string('forwarded_to')->nullable();
             $table->boolean('has_client')->default(0);
             $table->boolean('has_contact')->default(0);
+            $table->boolean('has_contact_job')->default(0);
             $table->boolean('has_score')->default(0);
-            $table->string('forwarded_to')->default(0);
             $table->integer('score')->nullable();
+            $table->integer('score_job')->nullable();
             $table->string('status')->nullable();
-            $table->text('status_message')->nullable();
             $table->timestamps();
         });
     }

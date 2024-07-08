@@ -10,6 +10,7 @@ use App\Models\MsgToken;
 use Exception;
 use GuzzleHttp\Client;
 use App\Models\MsgUser;
+use App\Classes\EmailAnalyser;
 use GuzzleHttp\Exception\ClientException;
 use GuzzleHttp\Exception\GuzzleException;
 
@@ -152,62 +153,27 @@ class MsgConnect
         try {
             // Get the current email to modify
             $email = $this->guzzle('get', "users/{$user->ms_id}/messages/{$messageId}");
-            [$senderEmail, $fromEmail, $toRecipients] = $this->extractEmailDetails($email);
-            $from = $senderEmail ?? $fromEmail;
-            $msgEmailIn;
-            if($from != 'charles.stolive@gmail.com') {
-                $msgEmailIn = $user->msg_email_ins()->create([
-                    'from' => $from,
-                    'data' => $email,
-                    'status' => 'canceled',
-                    'status_message' => 'ne fait pas partie des emails ok',
-                ]);
-                \Log::info('on abandonne ce mail !!!');
-                return;
-            } else {
-                $msgEmailIn = $user->msg_email_ins()->create([
-                    'from' => $from,
-                    'data' => $email,
-                    'status' => 'started',
-                ]);
-            }
+            $emailAnalyser = new emailAnalyser($email, $user);
+            
+            
+            
 
-            $updatedSubject = "[test] " . $email['subject'];
-            $category = 'good';
+            // $updatedSubject = "[test] " . $email['subject'];
+            // $category = 'good';
 
-            if($user->is_test) {
-                \Log::info('En test pas de modifications de mails');
-                return;
-            }
 
-            // Update the email
-            $updateData = [
-                'subject' => $updatedSubject,
-                'categories' => [$category] // Add the category
-            ];
-            $response = $this->guzzle('patch', "users/{$user->ms_id}/messages/{$messageId}", $updateData);
-            $msgEmailIn->update([
-                'status' => 'rate',
-                'status_message' => $category,
-            ]);
+            // // Update the email
+            // $updateData = [
+            //     'subject' => $updatedSubject,
+            //     'categories' => [$category] // Add the category
+            // ];
+            // $response = $this->guzzle('patch', "users/{$user->ms_id}/messages/{$messageId}", $updateData);
 
             return $response;
         } catch (Exception $e) {
             \Log::error("Failed to modify email header: " . $e->getMessage());
             return null;
         }
-    }
-
-    private function extractEmailDetails($emailData)
-    {
-        // Extraire l'adresse email de l'expéditeur
-        $senderEmail = \Arr::get($emailData, 'sender.emailAddress.address');
-        // Extraire l'adresse email du champ 'from'
-        $fromEmail = \Arr::get($emailData, 'from.emailAddress.address');
-        // Pour les destinataires, 'toRecipients' est une liste
-        $toRecipients = \Arr::pluck($emailData['toRecipients'], 'emailAddress.address');
-        // \Log::info('To Recipients: ' . implode(', ', $toRecipients));
-        return [$senderEmail,$fromEmail,$toRecipients];
     }
 
     public function getAccessToken(bool $returnNullNoAccessToken = false, bool $redirect = false): mixed

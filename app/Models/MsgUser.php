@@ -32,7 +32,7 @@ class MsgUser extends Model
 
         if (App::environment('local')) {
             \Log::info('on est en local');
-            return [];
+            // return [];
         }
         
         $connected = MsgConnect::isConnected();
@@ -64,6 +64,10 @@ class MsgUser extends Model
         $mailAndids = \Arr::pluck($filteredUsers, 'mail', 'id');
         \Log::info($mailAndids);
         return $mailAndids;
+    }
+
+    public static function getLocalUser() {
+        return self::get()->pluck( 'email', 'id')->toArray();
     }
 
     public static function getApiMsgUser($id)
@@ -121,11 +125,6 @@ class MsgUser extends Model
         } else {
             \Log::info('pas de sucess ???  ' ,$reponse);
         }
-    }
-
-    public function analyseEmail($email) {
-
-
     }
 
     

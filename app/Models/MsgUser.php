@@ -70,6 +70,10 @@ class MsgUser extends Model
         return self::get()->pluck( 'email', 'id')->toArray();
     }
 
+    public static function getLocalUserEmail() {
+        return self::get()->pluck( 'email', 'email')->toArray();
+    }
+
     public static function getApiMsgUser($id)
     {
         $connected = MsgConnect::isConnected();

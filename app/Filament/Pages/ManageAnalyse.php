@@ -32,6 +32,9 @@ class ManageAnalyse extends SettingsPage
 
     public function form(Form $form): Form
     {
+        $userOptions = MsgUser::getLocalUserEmail();
+
+
         return $form
             ->schema([
                 Section::make('Scorings')
@@ -97,14 +100,16 @@ class ManageAnalyse extends SettingsPage
                                 ->icon('heroicon-o-play')
                                 ->color('primary')
                                 ->form([
-                                    Select::make('msg_id')
-                                        ->label('Choisissez un Email')
-                                        ->options(function () {
-                                            // Charger les options uniquement lorsque le champ est interactif
-                                            return MsgUser::getLocalUser();
-                                        }),
+                                    // Select::make('msg_id')
+                                    //     ->label('Choisissez un Email')
+                                    //     ->options($userOptions)
+                                    //     ->default(function () use ($userOptions) {
+                                    //         return !empty($userOptions) ? array_key_first($userOptions) : null;
+                                    //     }),
                                     TextInput::make('test_from')->label('From')->default('alexis.clement@suscillon.com'),
-                                    TextInput::make('test_tos')->label('to')->helperText('Séparer les valeurs par une ,')->default('test@test.com'),
+                                    TextInput::make('test_tos')->label('to')->helperText('Séparer les valeurs par une ",", la première valeur sera la cible MsgraphUser, elle doit exister !')->default(function () use ($userOptions) {
+                                            return !empty($userOptions) ? array_key_first($userOptions) : null;
+                                        }),
                                     TextInput::make('subject')->label('Sujet')->default('Hello World !'),
                                     RichEditor::make('body')->label('body')->default('<p>Du contenu</p>'),
                                 ])
@@ -125,7 +130,6 @@ class ManageAnalyse extends SettingsPage
                                     $sellsy = new SellsyService();
                                     $result = $sellsy->searchByEmail($email);
                                     $set('test_result', $result);
-
                                 }),
 
                         ]),

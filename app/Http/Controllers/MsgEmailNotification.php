@@ -17,8 +17,8 @@ class MsgEmailNotification extends Controller
 
         // Check if the request contains a validation token
         if ($request->has('validationToken')) {
-            \Log::info('Validation token received:');
-            \Log::info($request->input('validationToken'));
+            //\Log::info('Validation token received:');
+            //\Log::info($request->input('validationToken'));
             // Respond with the validation token as plain text
             return response($request->input('validationToken'))->header('Content-Type', 'text/plain');
         }
@@ -29,8 +29,8 @@ class MsgEmailNotification extends Controller
         // Traitement de la notification
         try {
             $result = MsgConnect::processEmailNotification($notificationData);
-            \Log::info('OK with result------------------------');
-            \Log::info($result);
+            //\Log::info('OK with result------------------------');
+            //\Log::info($result);
             return response()->json(['status' => 'success', 'message' => 'Email processed successfully'], 200);
         } catch (\Exception $e) {
             // \Log::error($e->getMessage());

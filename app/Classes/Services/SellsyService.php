@@ -8,6 +8,8 @@ use GuzzleHttp\Exception\ConnectException;
 use App\Models\SellsyToken;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
+use App\Exceptions\Selssy\ExceptionResult;
+use Exception;
 
 class SellsyService
 {
@@ -87,7 +89,8 @@ class SellsyService
 
         if (!$token || Carbon::now()->gte($token->expires_at)) {
             $newTokenData = $this->requestAccessToken();
-            $expiresAt = Carbon::now()->addSeconds($newTokenData['expires_in']);
+            //\Log::info($newTokenData);
+            $expiresAt = Carbon::now()->addSeconds($newTokenData['expires_at']);
             if ($token) {
                 $token->update([
                     'access_token' => $newTokenData['access_token'],
@@ -130,6 +133,14 @@ class SellsyService
         do {
             $data = $this->handleRequest('GET', $query);
 
+            
+            $count = $data['pagination']['count'] ?? null;
+            $total = $data['pagination']['count'] ?? null;
+
+            if($count == 0) {
+                throw new ExceptionResult('no_contact');
+            }
+
             foreach ($data['data'] as $item) {
                 foreach ($item['companies'] as $company) {
                     $companyId = $company['id'] ?? null;
@@ -141,12 +152,7 @@ class SellsyService
                 $filteredItem = $item;
                 $allData[] = $filteredItem;
                 if ($stopBecauseOfNonUnique) {
-                    $allData['error'] = [
-                        'message' => 'multiple_client',
-                        'new_id' => $companyId,
-                        'previous_id' => $uniqueCompanyId,
-                    ];
-                    return $allData;
+                    throw new ExceptionResult('multiple_client', ['new_id' => $companyId,'previous_id' => $uniqueCompanyId]);
                 }
             }
 
@@ -165,105 +171,86 @@ class SellsyService
         return $allData;
     }
 
-
-    public function workonContactResult($data) {
-        if (isset($data['error']['message'])) {
-            return [
-                'type' => 'error', 
-                'message' => $data['error']['message'],
-            ];
-        }
-        if (count($data) == 0) {
-            return [
-                'type' => 'error', 
-                'message' => 'no_contact',
-            ];
-        }
-        if (count($data) == 1) {
-            $result = $data[0];
-            $companies = null;
-            if (count($result['companies']) == 1) {
-                $companies = $result['companies'][0]['id'];
-            } else if (count($result['companies']) > 1) {
-                $companies = 'multiple';
-            }
-            return [
-                'type' => 'contact',
-                'contact_id' => $result['object']['id'] ?? null,
-                'client_id' => $companies
-            ];
-        }
-        if (count($data) > 1) {
-            //on peu prendre le premier resultat parceque si plusieurs enreprise il a été préalablement filtré et mis en erreur. 
-            $result = $data[0];
-            if (count($result['companies']) == 1) {
-                $companies = $result['companies'][0]['id'];
-            } 
-            return [
-                'type' => 'client',
-                'client_id' => $companies
-            ];
-        }
-    }
-
-    public function workOnClientResult($data) {
-        \Log::info('count data ---'.count($data));
-        if (count($data) == 0) {
-            return [
-                'type' => 'error', 
-                'message' => 'empty',
-            ];
-        } else {
-            return $this->extractCustomFields($data);
-        }
-
-    }
-
     function extractCustomFields($data) {
-    $customFields = $data['_embed']['custom_fields'];
-    $result = [];
-    foreach ($customFields as $field) {
-        // Vérifiez si la valeur est un tableau et prenez la première valeur si c'est le cas
-        if (is_array($field['value'])) {
-            $result[$field['code']] = $field['value'][0];
-        } else {
-            $result[$field['code']] = $field['value'];
+        $customFields = $data['_embed']['custom_fields'];
+        $result = [];
+        foreach ($customFields as $field) {
+            // Vérifiez si la valeur est un tableau et prenez la première valeur si c'est le cas
+            if (is_array($field['value'])) {
+                $result[$field['code']] = $field['value'][0];
+            } else {
+                $result[$field['code']] = $field['value'];
+            }
         }
+        unset($data['_embed']);
+        return array_merge($data, $result);
     }
-    unset($data['_embed']);
-    return array_merge($data, $result);
-}
 
-    public function searchByEmail(string $email) {
+    public function searchContactByEmail(string $email) {
         $query = sprintf('search?q=%s&type[]=contact&limit=50', $email);
-        $searchResult = $this->executeQuery($query);
-        $parsedResult = $this->workonContactResult($searchResult);
-        $typeparsedResult = $parsedResult['type'];
-        if ($typeparsedResult == 'contact') {
-            $searchResult['x_parsedResult'] = $parsedResult;
-            if ($contactId = $parsedResult['contact_id'] ?? false) {
-                $searchResult['x_contact'] = $this->getContactById($contactId);
-            }
-            if ($clientId = $parsedResult['client_id'] ?? false) {
-                $searchResult['temp_client'] = $clientResult = $this->getClientById($clientId);
-                $searchResult['x_client'] = $this->workOnClientResult($clientResult);
-            }
-            if ($staffId = $searchResult['x_client']['progi-commerc2'] ?? false) {
-                $searchResult['x_staff'] = $this->searchByStaffId($staffId);
-            }
-            return $searchResult;
-        } else if ($typeparsedResult == 'empty') {
-            $ndd = $this->getDomainFromEmail($email);
-            $query = sprintf('search?q=%s&type[]=contact&limit=50', $ndd);
+        
+        try {
+            \Log::info('avant execute');
             $searchResult = $this->executeQuery($query);
-            $parsedResult = $this->workonContactResult($searchResult);
-            $typeparsedResult = $parsedResult['type'];
-            if ($typeparsedResult == 'client') {
-                if ($clientId = $parsedResult['client_id'] ?? false) {
-                    $searchResult['x_client'] = $this->getClientById($clientId);
+            $finalResult = [];
+            $nbContacts = count($searchResult);
+            $result = $searchResult[0];
+            $clientId = $result['companies'][0]['id'] ?? null;
+            $contactId = $result['object']['id'] ?? null;
+            if ($contactId && $nbContacts == 1) {
+                $finalResult['contact'] = $this->getContactById($contactId);
+            } else if($nbContacts > 1) {
+                $finalResult['contact']['error'] = 'multiple';
+            }
+            if ($clientId) {
+                $clientResult = $this->getClientById($clientId);
+                $clientResult  = $this->extractCustomFields($clientResult);
+                $finalResult['client'] = $clientResult;
+                if ($staffId = $clientResult['progi-commerc2'] ?? false) {
+                    $finalResult['staff'] = $this->searchByStaffId($staffId);
                 }
             }
-            return $searchResult;
+            $finalResult['x-search'] = $searchResult;
+            return $finalResult;
+        } catch(ExceptionResult $e)  {
+            if($e->getMessage() == 'no_contact') {
+                $ndd = $this->getDomainFromEmail($email);
+                $finalResult = $this->searchFromNdd($ndd);
+                return $finalResult;
+            }
+            if($e->getMessage() == 'multiple_client') {
+                return array_merge(['error' => 'multiple_client'], $this->getData());
+            }
+        } catch (Exception $ex) {
+            throw $ex;
+        }
+    }
+
+    public function searchFromNdd($ndd) {
+        $query = sprintf('search?q=%s&type[]=contact&limit=50', $ndd);
+        \Log::info('pas de contact recherche sur NDD : '.$ndd);
+        try {
+            $searchResult = $this->executeQuery($query);
+            $finalResult = [];
+            \Log::info('$searchResult');
+            \Log::info($searchResult);
+            $result = $searchResult[0];
+            $clientId = $result['companies'][0]['id'] ?? null;
+            if ($clientId) {
+                $clientResult = $this->getClientById($clientId);
+                $clientResult  = $this->extractCustomFields($clientResult);
+                $finalResult['client'] = $clientResult;
+                if ($staffId = $clientResult['progi-commerc2'] ?? false) {
+                    $finalResult['staff'] = $this->searchByStaffId($staffId);
+                }
+            }
+            $finalResult['x-search'] = $searchResult;
+            return $finalResult;
+        } catch(ExceptionResult $e)  {
+            \Log::info($e->getMessage());
+            return array_merge(['error' => $e->getMessage()], $e->getData());
+        } catch (Exception $ex) {
+            throw $ex;
         }
     }
 

@@ -47,7 +47,6 @@ class MsgUserResource extends Resource
                 TextEntry::make('ms_id'),
                 TextEntry::make('email'),
                 TextEntry::make('abn_secret'),
-                
             ]);
     }
 

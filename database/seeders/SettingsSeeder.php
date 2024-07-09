@@ -52,7 +52,7 @@ class SettingsSeeder extends Seeder
                 'group' => 'analyse',
                 'name' => 'contact_scorings',
                 'locked' => 0,
-                'payload' => '[{"name": "METIER", "score": "10"}, {"name": "MACHIN", "score": "19"}]',
+                'payload' => '[{"name": "METIER X", "score": "10"}, {"name": "CONDUITE DE TRAVAUX", "score": "19"}]',
                 'created_at' => '2024-07-08 09:23:25',
                 'updated_at' => '2024-07-08 09:28:00',
             ],

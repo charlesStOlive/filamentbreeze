@@ -126,9 +126,9 @@ class ManageAnalyse extends SettingsPage
                                     $data['toRecipients'] = $toResipients;
                                     unset($data['test_from']);
                                     unset($data['test_tos']);
-                                    \Log::info($data);
+                                    //\Log::info($data);
                                     $sellsy = new SellsyService();
-                                    $result = $sellsy->searchByEmail($email);
+                                    $result = $sellsy->searchContactByEmail($email);
                                     $set('test_result', $result);
                                 }),
 

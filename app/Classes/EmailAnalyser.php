@@ -57,8 +57,8 @@ class EmailAnalyser
 
     private function getEmailToAddresses($recipients) {
         $emails = [];
-        \Log::info('getEmailToAddresses');
-        \Log::info('user->email : '.$this->user->email);
+        //\Log::info('getEmailToAddresses');
+        //\Log::info('user->email : '.$this->user->email);
 
         foreach ($recipients as $recipient) {
             if (isset($recipient['emailAddress']['address'])) {

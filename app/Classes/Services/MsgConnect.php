@@ -64,7 +64,7 @@ class MsgConnect
 
     public function getUsers() {
         $users = $this->guzzle('get', 'users');
-        \Log::info($users);
+        //\Log::info($users);
         return $users;
     }
 
@@ -84,7 +84,7 @@ class MsgConnect
             $response = $this->guzzle('post', 'subscriptions', $subscription);
             return ['success' => true, 'response' => $response];
         } catch (Exception $e) {
-            \Log::error('Failed to subscribe to email notifications: ' . $e->getMessage());
+            //\Log::error('Failed to subscribe to email notifications: ' . $e->getMessage());
             return ['success' => false, 'error' => 'Failed to subscribe to email notifications'];
         }
     }
@@ -95,7 +95,7 @@ class MsgConnect
             $response = $this->guzzle('delete', 'subscriptions/' . $subscriptionId);
             return ['success' => true, 'response' => $response];
         } catch (Exception $e) {
-            \Log::error('Failed to unsubscribe from email notifications: ' . $e->getMessage());
+            //\Log::error('Failed to unsubscribe from email notifications: ' . $e->getMessage());
             return ['success' => false, 'error' => 'Failed to unsubscribe from email notifications'];
         }
     }
@@ -110,7 +110,7 @@ class MsgConnect
             $response = $this->guzzle('patch', 'subscriptions/' . $subscriptionId, $subscription);
             return ['success' => true, 'response' => $response];
         } catch (Exception $e) {
-            \Log::error('Failed to renew email notification subscription: ' . $e->getMessage());
+            //\Log::error('Failed to renew email notification subscription: ' . $e->getMessage());
             return ['success' => false, 'error' => 'Failed to renew email notification subscription'];
         }
     }
@@ -125,7 +125,7 @@ class MsgConnect
         try {
             $user = $this->verifySubscriptionAndgetUser($clientState, $tenantId);
         } catch (\Exception $e) {
-            \Log::error("Error in subscription verification: " . $e->getMessage());
+            //\Log::error("Error in subscription verification: " . $e->getMessage());
             throw $e; // Propagate the exception
         }
 
@@ -136,7 +136,7 @@ class MsgConnect
     protected function verifySubscriptionAndgetUser($clientState, $tenantId)
     {
         if ($tenantId != config('msgraph.tenantId')) {
-            \Log::info('Différence entre msgraph.tenantId et tenantId: '.config('msgraph.tenantId'));
+            //\Log::info('Différence entre msgraph.tenantId et tenantId: '.config('msgraph.tenantId'));
             throw new \Exception("Tenant ID does not match the configured value.");
         }
         // Suppose that MsgUser is your Eloquent model and it has `mds_id` and `abn_secret` fields
@@ -172,7 +172,7 @@ class MsgConnect
             // return $response;
             return true;
         } catch (Exception $e) {
-            \Log::error("Failed to modify email header: " . $e->getMessage());
+            //\Log::error("Failed to modify email header: " . $e->getMessage());
             return null;
         }
     }
@@ -260,10 +260,10 @@ class MsgConnect
             $responseObject = json_decode($response->getBody()->getContents(), true);
             return $responseObject ?? [];
         } catch (ClientException $e) {
-            \Log::error("HTTP request failed: " . $e->getMessage());
+            //\Log::error("HTTP request failed: " . $e->getMessage());
             return json_decode($e->getResponse()->getBody()->getContents(), true) ?? ['error' => 'Failed to process request'];
         } catch (Exception $e) {
-            \Log::error("Unexpected error: " . $e->getMessage());
+            //\Log::error("Unexpected error: " . $e->getMessage());
             throw new Exception('Internal server error. Please try again later.');
         }
     }

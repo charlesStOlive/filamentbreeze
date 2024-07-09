@@ -9,20 +9,10 @@ class MsgEmailIn extends Model
 {
     use HasFactory;
 
-    protected $fillable = [
-        'msg_user_id',
-        'from',
-        'data',
-        'status',
-        'status_message',
-        'has_client',
-        'has_contact',
-        'has_score',
-        'score',
-    ];
+    protected $protected = ['id'];
 
     protected $casts = [
-        'data' => 'array',
+        'data_mail' => 'array',
         'tos' => 'array',
         'data_sellsy' => 'array'
     ];

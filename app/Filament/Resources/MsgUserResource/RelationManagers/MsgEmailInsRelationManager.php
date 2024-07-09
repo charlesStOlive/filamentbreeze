@@ -7,9 +7,11 @@ use Filament\Tables;
 use Filament\Forms\Form;
 use Filament\Tables\Table;
 use Filament\Forms\Components\Checkbox;
+use Filament\Forms\Components\Section;
 use Filament\Tables\Actions\ViewAction;
 use Filament\Forms\Components\TextInput;
 use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Filters\Filter;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Filament\Resources\RelationManagers\RelationManager;
@@ -49,33 +51,49 @@ class MsgEmailInsRelationManager extends RelationManager
                         'canceled' => 'canceled',
                         'rate' => 'rate',
                         'started' => 'started',
-                    ])
+                    ]),
+                Filter::make('is_forwarded')->toggle(),
+                Filter::make('is_canceled')->toggle(),
+                Filter::make('has_sellsy_call')->toggle(),
+                Filter::make('has_client')->toggle(),
+                Filter::make('has_contact')->toggle(),
+                Filter::make('has_contact_job')->toggle(),
+                Filter::make('has_score')->toggle(),
                 //
             ])
             ->actions([
                 ViewAction::make()
                     ->form([
-                        TextInput::make('from')->columnSpan(2),
-                        TextInput::make('category')->columnSpan(2),
-                        TextInput::make('status')->columnSpan(2),
-                        Checkbox::make('is_forwarded')->columnSpan(2),
-                        TextInput::make('subject')->columnSpan(4),
-                        TextInput::make('new_subject')->columnSpan(4),
-                        FilamentJsonColumn::make('tos')->columnSpan(4),
-                        Checkbox::make('has_sellsy_call'),
-                        FilamentJsonColumn::make('data_sellsy')->columnSpan(4),
-                        Checkbox::make('is_canceled'),
-                        Checkbox::make('has_sellsy_call'),
-                        Checkbox::make('has_client'),
-                        Checkbox::make('has_contact'),
-                        Checkbox::make('has_contact_job'),
-                        Checkbox::make('has_score'),
-                        Checkbox::make('is_from_commercial'),
-                        Checkbox::make('has_regex_key'),
-                        Checkbox::make('willbe_forwarded'),
-                        TextInput::make('forwarded_to')->columnSpan(4),
+                        Section::make('base')
+                            ->schema([
+                                TextInput::make('from')->columnSpan(4),
+                                Checkbox::make('is_canceled')->columnSpan(4),
+                                TextInput::make('subject')->columnSpan(2),
+                                TextInput::make('new_subject')->columnSpan(2),
+                                TextInput::make('category')->columnSpan(2),
+                                TextInput::make('status')->columnSpan(2),
+                                Checkbox::make('is_forwarded')->columnSpan(4),
+                                FilamentJsonColumn::make('tos')->label('autres cibles')->columnSpan(4)->viewerOnly(),
+                        ])->columns(4)->columnSpan(4),
+                    Section::make('Selssy')
+                            ->schema([
+                                Checkbox::make('has_sellsy_call'),
+                                FilamentJsonColumn::make('data_sellsy')->columnSpan(4)->viewerOnly(),
+                                Checkbox::make('has_sellsy_call'),
+                                Checkbox::make('has_client'),
+                                Checkbox::make('has_contact'),
+                                Checkbox::make('has_contact_job'),
+                                Checkbox::make('has_score'),
+                        ])->columns(4)->columnSpan(4),
+                    Section::make('Commercials')
+                            ->schema([
+                                Checkbox::make('is_from_commercial')->columnSpan(4),
+                                Checkbox::make('has_regex_key'),
+                                Checkbox::make('willbe_forwarded'),
+                                TextInput::make('forwarded_to')->columnSpan(4),
+                        ])->columns(4)->columnSpan(4),
                         FilamentJsonColumn::make('data_mail')->columnSpan(4)->viewerOnly(),
-                    ])->grid(4),
+                    ]),
             ]);
     }
             

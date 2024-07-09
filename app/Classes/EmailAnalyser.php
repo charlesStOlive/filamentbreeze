@@ -40,7 +40,7 @@ class EmailAnalyser
     private function extractEmailDetails($email): void
     {
         // Extraire les infos de bases.
-        $this->emailIn->email_data = $email;
+        $this->emailIn->data_mail = $email;
         $sender = Arr::get($email, 'sender.emailAddress.address');
         $from = Arr::get($email, 'from.emailAddress.address');
         $this->emailIn->from = $from ?? $sender;
@@ -48,8 +48,28 @@ class EmailAnalyser
         if (stripos($subject, 'Re:') === 0 || stripos($subject, 'Fwd:') === 0 || stripos($subject, 'Fw:') === 0) {
             $this->emailIn->is_forwarded = true;
         }
-        $this->emailIn->tos = Arr::pluck($email, 'toRecipients.emailAddress.address');
+        $tos = $this->getEmailToAddresses($email['toRecipients'] ?? []);
+        $cc =  $this->getEmailToAddresses($email['ccRecipients'] ?? []);
+        
+        $this->emailIn->tos = array_merge($tos, $cc);
         $this->emailIn->Save();
+    } 
+
+    private function getEmailToAddresses($recipients) {
+        $emails = [];
+        \Log::info('getEmailToAddresses');
+        \Log::info('user->email : '.$this->user->email);
+
+        foreach ($recipients as $recipient) {
+            if (isset($recipient['emailAddress']['address'])) {
+                $email = $recipient['emailAddress']['address'];
+                if($email != $this->user->email) {
+                    $emails[] = $email;
+                }
+                
+            }
+        }
+        return $emails;
     }
 
     public function analyse(): void

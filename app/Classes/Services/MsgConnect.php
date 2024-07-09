@@ -169,7 +169,8 @@ class MsgConnect
             // ];
             // $response = $this->guzzle('patch', "users/{$user->ms_id}/messages/{$messageId}", $updateData);
 
-            return $response;
+            // return $response;
+            return true;
         } catch (Exception $e) {
             \Log::error("Failed to modify email header: " . $e->getMessage());
             return null;

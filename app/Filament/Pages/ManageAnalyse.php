@@ -108,8 +108,8 @@ class ManageAnalyse extends SettingsPage
                                     //     }),
                                     TextInput::make('test_from')->label('From')->default('alexis.clement@suscillon.com'),
                                     TextInput::make('test_tos')->label('to')->helperText('Séparer les valeurs par une ",", la première valeur sera la cible MsgraphUser, elle doit exister !')->default(function () use ($userOptions) {
-                                            return !empty($userOptions) ? array_key_first($userOptions) : null;
-                                        }),
+                                        return !empty($userOptions) ? array_key_first($userOptions) : null;
+                                    }),
                                     TextInput::make('subject')->label('Sujet')->default('Hello World !'),
                                     RichEditor::make('body')->label('body')->default('<p>Du contenu</p>'),
                                 ])

@@ -28,6 +28,7 @@ class AdminPanelProvider extends PanelProvider
             ->default()
             ->brandLogo(asset('images/cofim.png'))
             ->brandLogoHeight('2rem')
+            ->favicon(asset('images/favicon.png'))
             ->id('admin')
             ->path('admin')
             ->plugin(

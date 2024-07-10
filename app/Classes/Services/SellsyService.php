@@ -135,7 +135,7 @@ class SellsyService
 
             
             $count = $data['pagination']['count'] ?? null;
-            $total = $data['pagination']['count'] ?? null;
+            $total = $data['pagination']['total'] ?? null;
 
             if($count == 0) {
                 throw new ExceptionResult('no_contact');
@@ -152,12 +152,9 @@ class SellsyService
                 $filteredItem = $item;
                 $allData[] = $filteredItem;
                 if ($stopBecauseOfNonUnique) {
-                    throw new ExceptionResult('multiple_client', ['new_id' => $companyId,'previous_id' => $uniqueCompanyId]);
+                    throw new ExceptionResult('multiple_client', ['new_id' => $companyId,'previous_id' => $uniqueCompanyId, 'x-search' => $allData]);
                 }
             }
-
-            $count = $data['pagination']['count'] ?? null;
-            $total = $data['pagination']['count'] ?? null;
             if ($count == $total) {
                 break;
             }

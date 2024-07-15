@@ -43,7 +43,7 @@ class SettingsSeeder extends Seeder
                 'group' => 'analyse',
                 'name' => 'scorings',
                 'locked' => 0,
-                'payload' => '[{"score-max": "10", "score-min": "0", "group-name": "bas"}, {"score-max": "20", "score-min": "11", "group-name": "moyen"}, {"score-max": "30", "score-min": "21", "group-name": "Important"}, {"score-max": "40", "score-min": "31", "group-name": "hot"}]',
+                'payload' => '[{"score-max": "10", "score-min": "0", "category": "bas"}, {"score-max": "20", "score-min": "11", "category": "moyen"}, {"score-max": "30", "score-min": "21", "category": "Important"}, {"score-max": "40", "score-min": "31", "category": "hot"}]',
                 'created_at' => '2024-07-08 09:23:25',
                 'updated_at' => '2024-07-08 09:28:00',
             ],

@@ -62,7 +62,8 @@ class MsgConnect
         return $token->access_token ?? null;
     }
 
-    public function getUsers() {
+    public function getUsers()
+    {
         $users = $this->guzzle('get', 'users');
         //\Log::info($users);
         return $users;
@@ -128,9 +129,7 @@ class MsgConnect
             //\Log::error("Error in subscription verification: " . $e->getMessage());
             throw $e; // Propagate the exception
         }
-
-        $accessToken = $this->getAccessToken();
-        return $this->modifyEmailHeaderAndCategory($user, $messageId, $accessToken);
+        return $this->analyseEmail($user, $messageId);
     }
 
     protected function verifySubscriptionAndgetUser($clientState, $tenantId)
@@ -147,33 +146,123 @@ class MsgConnect
         return $user;
     }
 
-    public function modifyEmailHeaderAndCategory($user, $messageId)
+    public function analyseEmail($user, $messageId)
     {
-        $accessToken = $this->getAccessToken(); // Ensure you have a valid access token
+        // Ensure you have a valid access token
         try {
             // Get the current email to modify
             $email = $this->guzzle('get', "users/{$user->ms_id}/messages/{$messageId}");
-            $emailAnalyser = new emailAnalyser($email, $user);
-            
-            
-            
+            $emailAnalyser =  new EmailAnalyser($email, $user, $messageId);
+            $emailAnalyser->analyse();
+            if ($emailAnalyser->emailIn->is_rejected) {
+                return;
+            }
 
-            // $updatedSubject = "[test] " . $email['subject'];
-            // $category = 'good';
-
-
-            // // Update the email
-            // $updateData = [
-            //     'subject' => $updatedSubject,
-            //     'categories' => [$category] // Add the category
-            // ];
-            // $response = $this->guzzle('patch', "users/{$user->ms_id}/messages/{$messageId}", $updateData);
-
-            // return $response;
+            if ($emailAnalyser->emailIn->forwarded_to) {
+                if (!$user->is_test) {
+                    return $this->forwardEmail($user, $emailAnalyser->emailIn, $messageId);
+                } else {
+                    \Log::info('Blocage Test de la fnc forwardEmail');
+                }
+            }
+            if ($emailAnalyser->emailIn->is_updated) {
+                if (!$user->is_test) {
+                    return $this->updateEmail($user, $emailAnalyser->emailIn, $messageId);
+                } else {
+                    \Log::info('Blocage Test de la fnc updateEmail');
+                }
+            } else {
+                throw new Exception('Pas de cas de retour d analyse');
+            }
             return true;
         } catch (Exception $e) {
-            //\Log::error("Failed to modify email header: " . $e->getMessage());
-            return null;
+            throw $e;
+        }
+    }
+
+    public function forwardEmail($user, $emailIn, $messageId)
+    {
+        try {
+            if ($emailIn->move_to_folder) {
+                $this->setEmailInFOlder($user, $emailIn, $messageId);
+            }
+            $forwardData = [
+                'message' => [
+                    'toRecipients' => [
+                        [
+                            'emailAddress' => [
+                                'address' => $emailIn->forwarded_to,
+                            ],
+                        ],
+                    ],
+                    'comment' => 'Forwarded message',
+                ],
+                'saveToSentItems' => true,
+            ];
+
+            return $this->guzzle('post', "users/{$user->ms_id}/messages/{$messageId}/forward", $forwardData);
+        } catch (Exception $e) {
+            //\Log::error("Failed to forward email: " . $e->getMessage());
+            throw new Exception('Failed to forward email. Please try again later.');
+        }
+    }
+
+    public function setEmailInFOlder($user, $emailIn, $messageId)
+    {
+        try {
+            // Vérifier si le dossier existe déjà
+            $folderName = $emailIn->move_to_folder;
+            $existingFolder = $this->guzzle('get', "users/{$user->ms_id}/mailFolders?\$filter=displayName eq '{$folderName}'");
+
+            if (count($existingFolder['value']) > 0) {
+                // Utiliser l'ID du dossier existant
+                $folderId = $existingFolder['value'][0]['id'];
+            } else {
+                // Créer un nouveau dossier nommé comme spécifié dans $emailIn->move_to_folder
+                $folderData = [
+                    'displayName' => $folderName,
+                ];
+                $folderResponse = $this->guzzle('post', "users/{$user->ms_id}/mailFolders", $folderData);
+                $folderId = $folderResponse['id'];
+            }
+
+            // Déplacer l'email dans le dossier spécifié
+            $moveData = [
+                'destinationId' => $folderId,
+            ];
+            $this->guzzle('post', "users/{$user->ms_id}/messages/{$messageId}/move", $moveData);
+
+            // Marquer l'email comme lu
+            $updateData = [
+                'isRead' => true,
+            ];
+            return $this->guzzle('patch', "users/{$user->ms_id}/messages/{$messageId}", $updateData);
+        } catch (Exception $e) {
+            //\Log::error("Failed to move email to folder: " . $e->getMessage());
+            throw new Exception('Failed to move email to folder. Please try again later.');
+        }
+    }
+
+    public function updateEmail($user, $emailIn, $messageId)
+    {
+        try {
+            $updateData = [
+                'subject' => $emailIn->new_subject,
+                'categories' => [$emailIn->category],
+            ];
+
+            // Update the email
+            $this->guzzle('patch', "users/{$user->ms_id}/messages/{$messageId}", $updateData);
+
+            // Check if the email needs to be moved to a new folder
+            if ($emailIn->move_to_folder) {
+                $this->setEmailInFOlder($user, $emailIn, $messageId);
+            }
+
+            return true;
+        } catch (Exception $e) {
+            //\Log::error("Failed to update email: " . $e->getMessage());
+            throw new Exception('Failed to update email. Please try again later.');
         }
     }
 
@@ -218,23 +307,6 @@ class MsgConnect
             'refresh_token' => $refresh_token,
         ]);
     }
-
-    // /**
-    //  * @throws Exception
-    //  */
-    // public function __call(string $function, array $args): mixed
-    // {
-    //     $options = ['get', 'post', 'patch', 'put', 'delete'];
-    //     $path = (isset($args[0])) ? $args[0] : null;
-    //     $data = (isset($args[1])) ? $args[1] : [];
-
-    //     if (in_array($function, $options)) {
-    //         return self::guzzle($function, $path, $data);
-    //     } else {
-    //         //request verb is not in the $options array
-    //         throw new Exception($function . ' is not a valid HTTP Verb');
-    //     }
-    // }
 
     protected function isJson($data): bool
     {

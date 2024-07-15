@@ -37,14 +37,15 @@ class ManageAnalyse extends SettingsPage
 
         return $form
             ->schema([
-                Section::make('Scorings')
-                    ->description('Grille des scores.')
+                Section::make('Catégories')
+                    ->description('Allocatoin des catégories en fonction du score')
                     ->schema([
-                        Repeater::make('scorings')
+                        TextInput::make('category_no_score')->label('Catégorie pour client sans Score (null) dans Sellsy')->required(),
+                        Repeater::make('scorings')->label('Catégorie allouée en fonction du score ( score client + scorejob si existe )')
                             ->schema([
                                 TextInput::make('score-min')->integer()->required(),
                                 TextInput::make('score-max')->integer()->required(),
-                                TextInput::make('group-name')->required(),
+                                TextInput::make('category')->label('nom de la catégorie')->required(),
                             ])
                             ->addActionLabel('Ajouter un score mix/max')
                             ->columns(3),
@@ -71,7 +72,7 @@ class ManageAnalyse extends SettingsPage
                             ->addActionLabel('Ajouter un commercial')
                             ->grid(2),
                     ]),
-                Section::make('Nom de domaines internes')
+                Section::make('Nom de domaines bloqués')
                     ->description('Liste des noms de domainex internes qui ne seront pas étudié sauf si commercial.')
                     ->schema([
                         Repeater::make('internal_ndds')
@@ -91,50 +92,51 @@ class ManageAnalyse extends SettingsPage
                             ->addActionLabel('Ajouter un Nom de domaine externe')
                             ->grid(2),
                     ]),
-                Section::make('Test de connection')
-                    ->description('Tester la connexion avec Sellsy.')
-                    ->schema([
-                        Actions::make([
-                            Action::make('testConnection')
-                                ->label('Simuler un email')
-                                ->icon('heroicon-o-play')
-                                ->color('primary')
-                                ->form([
-                                    // Select::make('msg_id')
-                                    //     ->label('Choisissez un Email')
-                                    //     ->options($userOptions)
-                                    //     ->default(function () use ($userOptions) {
-                                    //         return !empty($userOptions) ? array_key_first($userOptions) : null;
-                                    //     }),
-                                    TextInput::make('test_from')->label('From')->default('alexis.clement@suscillon.com'),
-                                    TextInput::make('test_tos')->label('to')->helperText('Séparer les valeurs par une ",", la première valeur sera la cible MsgraphUser, elle doit exister !')->default(function () use ($userOptions) {
-                                        return !empty($userOptions) ? array_key_first($userOptions) : null;
-                                    }),
-                                    TextInput::make('subject')->label('Sujet')->default('Hello World !'),
-                                    RichEditor::make('body')->label('body')->default('<p>Du contenu</p>'),
-                                ])
-                                ->modalHeading('Créer un faux email')
-                                ->modalSubmitActionLabel('Exécuter le test')
-                                ->action(function (Forms\Set $set, array $data) {
-                                    // $email = $data['parametre'] ?? null;
-                                    $data['from']['emailAddress']['address'] = $email = trim($data['test_from']);
-                                    $toResipients = [];
-                                    $tos = explode(',', trim($data['test_tos']));
-                                    foreach ($tos as $to) {
-                                        $toResipients[] = ['emailAddress' => ['address' => trim($to)]];
-                                    }
-                                    $data['toRecipients'] = $toResipients;
-                                    unset($data['test_from']);
-                                    unset($data['test_tos']);
-                                    //\Log::info($data);
-                                    $sellsy = new SellsyService();
-                                    $result = $sellsy->searchContactByEmail($email);
-                                    $set('test_result', $result);
-                                }),
+            //     Section::make('Test de connection')
+            //         ->description('Tester la connexion avec Sellsy.')
+            //         ->schema([
+            //             Actions::make([
+            //                 Action::make('testConnection')
+            //                     ->label('Simuler un email')
+            //                     ->icon('heroicon-o-play')
+            //                     ->color('primary')
+            //                     ->form([
+            //                         // Select::make('msg_id')
+            //                         //     ->label('Choisissez un Email')
+            //                         //     ->options($userOptions)
+            //                         //     ->default(function () use ($userOptions) {
+            //                         //         return !empty($userOptions) ? array_key_first($userOptions) : null;
+            //                         //     }),
+            //                         TextInput::make('test_from')->label('From')->default('alexis.clement@suscillon.com'),
+            //                         TextInput::make('test_tos')->label('to')->helperText('Séparer les valeurs par une ",", la première valeur sera la cible MsgraphUser, elle doit exister !')->default(function () use ($userOptions) {
+            //                             return !empty($userOptions) ? array_key_first($userOptions) : null;
+            //                         }),
+            //                         TextInput::make('subject')->label('Sujet')->default('Hello World !'),
+            //                         RichEditor::make('body')->label('body')->default('<p>Du contenu</p>'),
+            //                     ])
+            //                     ->modalHeading('Créer un faux email')
+            //                     ->modalSubmitActionLabel('Exécuter le test')
+            //                     ->action(function (Forms\Set $set, array $data) {
+            //                         // $email = $data['parametre'] ?? null;
+            //                         $data['from']['emailAddress']['address'] = $email = trim($data['test_from']);
+            //                         $toResipients = [];
+            //                         $tos = explode(',', trim($data['test_tos']));
+            //                         foreach ($tos as $to) {
+            //                             $toResipients[] = ['emailAddress' => ['address' => trim($to)]];
+            //                         }
+            //                         $data['toRecipients'] = $toResipients;
+            //                         unset($data['test_from']);
+            //                         unset($data['test_tos']);
+            //                         //\Log::info($data);
+            //                         $sellsy = new SellsyService();
+            //                         $result = $sellsy->searchContactByEmail($email);
+            //                         // $result = $sellsy->getCustomFields();
+            //                         $set('test_result', $result);
+            //                     }),
 
-                        ]),
-                        FilamentJsonColumn::make('test_result')->viewerOnly(),
-                    ]),
+            //             ]),
+            //             FilamentJsonColumn::make('test_result')->viewerOnly(),
+            //         ]),
             ])->columns(1);
     }
 }

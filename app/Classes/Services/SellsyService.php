@@ -216,7 +216,7 @@ class SellsyService
                 return $finalResult;
             }
             if($e->getMessage() == 'multiple_client') {
-                return array_merge(['error' => 'multiple_client'], $this->getData());
+                return array_merge(['error' => 'multiple_client'], $e->getData());
             }
         } catch (Exception $ex) {
             throw $ex;
@@ -261,7 +261,7 @@ class SellsyService
 
     public function getClientById($id) {
         $queryParams = [
-            'embed' => ['cf.197833', 'cf.282914'],
+            'embed' => ['cf.197833', 'cf.282914', 'cf.182029'],
             'field' => ['name', '_embed']
         ];
         $queryParams = http_build_query($queryParams, '', '&', PHP_QUERY_RFC3986);

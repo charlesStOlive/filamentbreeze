@@ -12,13 +12,21 @@ class MsgEmailIn extends Model
     protected $protected = ['id'];
 
     protected $casts = [
-        'data_mail' => 'array',
+        'data_mail' => 'json',
         'tos' => 'array',
-        'data_sellsy' => 'array'
+        'data_sellsy' => 'json'
     ];
 
     public function msg_email_user()
     {
         return $this->belongsTo(MsgUser::class);
+    }
+
+    public function getStatusAttribute() {
+        if($this->is_rejected) {
+            return $this->reject_info;
+        } else {
+            return $this->category;
+        }
     }
 }

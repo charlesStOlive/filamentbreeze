@@ -16,6 +16,8 @@ class AnalyseSettings extends Settings
 
     public array $contact_scorings;
 
+    public string $category_no_score;
+
     public static function group(): string
     {
         return 'analyse';

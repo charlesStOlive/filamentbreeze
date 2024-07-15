@@ -18,24 +18,26 @@ return new class extends Migration
             $table->string('from')->nullable();
             $table->string('subject')->nullable();
             $table->string('new_subject')->nullable();
-            $table->string('category')->nullable();
             $table->json('tos')->nullable();
-            $table->boolean('is_forwarded')->default(0);
-            $table->boolean('is_canceled')->default(0);
+            $table->boolean('is_mail_response')->default(0);
+            //
+            $table->boolean('is_from_commercial')->default(0);
+            $table->string('regex_key_value')->nullable();
+            //
+            $table->boolean('is_rejected')->default(0);
+            $table->string('reject_info')->nullable();
+            $table->string('category')->nullable();
+            $table->string('forwarded_to')->nullable();
+            $table->string('move_to_folder')->nullable();
             $table->boolean('has_sellsy_call')->default(0);
             $table->boolean('has_client')->default(0);
             $table->boolean('has_contact')->default(0);
+            $table->boolean('has_staff')->default(0);
             $table->boolean('has_contact_job')->default(0);
             $table->boolean('has_score')->default(0);
             $table->integer('score')->nullable();
             $table->integer('score_job')->nullable();
             $table->json('data_sellsy')->nullable();
-            $table->boolean('is_from_commercial')->default(0);
-            $table->boolean('has_regex_key')->default(0);
-            $table->boolean('willbe_forwarded')->default(0);
-            $table->string('forwarded_to')->nullable();
-            
-            $table->string('status')->nullable();
             $table->timestamps();
         });
     }

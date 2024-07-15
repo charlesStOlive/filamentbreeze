@@ -31,10 +31,10 @@ class MsgEmailNotification extends Controller
             $result = MsgConnect::processEmailNotification($notificationData);
             //\Log::info('OK with result------------------------');
             //\Log::info($result);
-            return response()->json(['status' => 'success', 'message' => 'Email processed successfully'], 200);
+            return response()->json(['reject_info' => 'success', 'message' => 'Email processed successfully'], 200);
         } catch (\Exception $e) {
             // \Log::error($e->getMessage());
-            return response()->json(['status' => 'error', 'message' => 'Failed to process email: ' . $e->getMessage()], 500);
+            return response()->json(['reject_info' => 'error', 'message' => 'Failed to process email: ' . $e->getMessage()], 500);
         }
     }
 

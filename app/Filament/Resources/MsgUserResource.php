@@ -46,7 +46,7 @@ class MsgUserResource extends Resource
             ->schema([
                 TextEntry::make('ms_id'),
                 TextEntry::make('email'),
-                TextEntry::make('abn_secret'),
+                // TextEntry::make('abn_secret'),
             ]);
     }
 
@@ -64,23 +64,23 @@ class MsgUserResource extends Resource
                 //
             ])
             ->actions([
-                Action::make('suscribe')
-                    ->label('Souscrire')
-                    ->requiresConfirmation()
-                    ->modalDescription('Activez le mode test au préalable, si vous ne voulez pas modifier le mail')
-                    ->action(fn (MsgUser $record) => $record->suscribe())
-                    ->visible(fn (MsgUser $record): bool => $record->suscription_id === null),
-                Action::make('revoke')
-                    ->label('Révoquer')
-                    ->color('danger')
-                    ->requiresConfirmation()
-                    ->action(fn (MsgUser $record) => $record->revokeSuscription())
-                    ->visible(fn (MsgUser $record): bool => $record->suscription_id !== null),
-                Action::make('refresh')
-                    ->label('Refresh')
-                    ->color('gray')
-                    ->action(fn (MsgUser $record) => $record->refreshSuscription())
-                    ->visible(fn (MsgUser $record): bool => $record->suscription_id !== null),
+                // Action::make('suscribe')
+                //     ->label('Souscrire')
+                //     ->requiresConfirmation()
+                //     ->modalDescription('Activez le mode test au préalable, si vous ne voulez pas modifier le mail')
+                //     ->action(fn (MsgUser $record) => $record->suscribe())
+                //     ->visible(fn (MsgUser $record): bool => $record->suscription_id === null),
+                // Action::make('revoke')
+                //     ->label('Révoquer')
+                //     ->color('danger')
+                //     ->requiresConfirmation()
+                //     ->action(fn (MsgUser $record) => $record->revokeSuscription())
+                //     ->visible(fn (MsgUser $record): bool => $record->suscription_id !== null),
+                // Action::make('refresh')
+                //     ->label('Refresh')
+                //     ->color('gray')
+                //     ->action(fn (MsgUser $record) => $record->refreshSuscription())
+                //     ->visible(fn (MsgUser $record): bool => $record->suscription_id !== null),
             ])
             ->recordUrl(
                 fn (MsgUser $record): string => MsgUserResource::getUrl('view', ['record' => $record])
